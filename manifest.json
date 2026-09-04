@@ -1,0 +1,17 @@
+{
+  "name": "ManagerBook — База знаний управляющего рестораном",
+  "short_name": "ManagerBook",
+  "description": "Интерактивная offline-first база знаний для управляющих ресторанов. 10 модулей, 50 тестов, чек-листы, кейсы.",
+  "start_url": "/ManagerBook/",
+  "display": "standalone",
+  "background_color": "#0a0908",
+  "theme_color": "#0a0908",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%230a0908' width='192' height='192' rx='24'/%3E%3Ctext x='96' y='120' font-size='100' text-anchor='middle' fill='%23c9b896'%3E📚%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

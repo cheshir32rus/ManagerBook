@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ManagerBook — База знаний управляющего ресторана</title>
+
+<style>
+  :root {
+    --bg: #0a0908;
+    --bg-card: rgba(28,26,24,0.72);
+    --accent: #c9b896;
+    --accent-dim: rgba(201,184,150,0.12);
+    --accent-glow: rgba(201,184,150,0.18);
+    --text: #e8e4df;
+    --text-dim: #9a9590;
+    --border: rgba(201,184,150,0.15);
+    --success: #7fb069;
+    --danger: #c75146;
+    --warning: #e9c46a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+  .app { position: relative; z-index: 1; }
+  .header {
+    position: fixed; top: 0; left: 0; right: 0;
+    background: rgba(10,9,8,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-title {
+    font-family: 'Georgia', 'Times New Roman', 'Noto Serif', serif;
+    font-size: 1.15rem;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .header-sub { font-size: 0.7rem; color: var(--text-dim); font-weight: 300; }
+  .menu-btn, .search-btn {
+    width: 40px; height: 40px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 1.2rem;
+    backdrop-filter: blur(12px);
+  }
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 300px;
+    background: rgba(14,13,12,0.97);
+    backdrop-filter: blur(30px);
+    border-right: 1px solid var(--border);
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    padding: 20px 0;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 199; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+  .sidebar-header {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .sidebar-title {
+    font-family: 'Georgia', 'Times New Roman', 'Noto Serif', serif;
+    font-size: 1.3rem;
+    color: var(--accent);
+  }
+  .progress-bar {
+    height: 4px; background: rgba(201,184,150,0.1);
+    border-radius: 2px; margin-top: 10px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--accent);
+    border-radius: 2px; transition: width 0.5s ease;
+  }
+  .progress-text { font-size: 0.7rem; color: var(--text-dim); margin-top: 6px; }
+  .nav-item {
+    padding: 14px 20px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .nav-item:hover { background: rgba(201,184,150,0.05); }
+  .nav-item.active { border-left-color: var(--accent); background: rgba(201,184,150,0.08); }
+  .nav-num {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 600; color: var(--accent);
+    flex-shrink: 0;
+  }
+  .nav-item.active .nav-num { background: var(--accent); color: var(--bg); }
+  .nav-text { font-size: 0.85rem; font-weight: 500; }
+  .nav-check {
+    margin-left: auto; width: 18px; height: 18px;
+    border-radius: 50%; border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; color: transparent;
+  }
+  .nav-check.done { border-color: var(--success); color: var(--success); }
+  .main { padding: 76px 16px 100px; max-width: 800px; margin: 0 auto; }
+  .module-header { margin-bottom: 24px; }
+  .module-num {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent); margin-bottom: 6px;
+  }
+  .module-title {
+    font-family: 'Georgia', 'Times New Roman', 'Noto Serif', serif;
+    font-size: 1.6rem; font-weight: 600;
+    line-height: 1.3;
+  }
+  .module-time {
+    font-size: 0.75rem; color: var(--text-dim); margin-top: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .card {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    transition: box-shadow 0.3s;
+  }
+  .card:hover { box-shadow: 0 4px 24px rgba(201,184,150,0.06); }
+  .card-title {
+    font-family: 'Georgia', 'Times New Roman', 'Noto Serif', serif;
+    font-size: 1.15rem; color: var(--accent);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
+  }
+  .card-icon { font-size: 1.3rem; }
+  .card p { font-size: 0.9rem; color: var(--text); margin-bottom: 10px; }
+  .card ul { margin-left: 18px; margin-bottom: 12px; }
+  .card li { font-size: 0.88rem; color: var(--text); margin-bottom: 6px; }
+  .card strong { color: var(--accent); font-weight: 600; }
+  .highlight {
+    background: rgba(201,184,150,0.06);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 16px;
+    margin: 14px 0;
+    font-size: 0.88rem;
+  }
+  .highlight-danger {
+    background: rgba(199,81,70,0.08);
+    border-left-color: var(--danger);
+  }
+  .highlight-success {
+    background: rgba(127,176,105,0.08);
+    border-left-color: var(--success);
+  }
+  .formula {
+    background: rgba(10,9,8,0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    text-align: center;
+    margin: 12px 0;
+    letter-spacing: 0.5px;
+  }
+  .checklist-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(201,184,150,0.06);
+    cursor: pointer;
+  }
+  .checklist-item:last-child { border-bottom: none; }
+  .check-box {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    flex-shrink: 0; margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .check-box.checked {
+    background: var(--success); border-color: var(--success);
+    color: white; font-size: 0.75rem;
+  }
+  .check-text { font-size: 0.88rem; color: var(--text); }
+  .check-text.done { text-decoration: line-through; color: var(--text-dim); }
+  .quiz-container { margin-top: 8px; }
+  .quiz-question {
+    font-weight: 600; font-size: 0.95rem;
+    margin-bottom: 14px; color: var(--text);
+  }
+  .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+  .quiz-option {
+    background: rgba(10,9,8,0.5);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: rgba(201,184,150,0.05); }
+  .quiz-option.selected { border-color: var(--accent); background: rgba(201,184,150,0.1); }
+  .quiz-option.correct { border-color: var(--success); background: rgba(127,176,105,0.1); }
+  .quiz-option.wrong { border-color: var(--danger); background: rgba(199,81,70,0.1); }
+  .opt-letter {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .quiz-option.selected .opt-letter { border-color: var(--accent); color: var(--accent); }
+  .quiz-option.correct .opt-letter { border-color: var(--success); color: var(--success); }
+  .quiz-option.wrong .opt-letter { border-color: var(--danger); color: var(--danger); }
+  .quiz-explanation {
+    margin-top: 12px; padding: 14px;
+    background: rgba(201,184,150,0.05);
+    border-radius: 10px;
+    font-size: 0.85rem; color: var(--text-dim);
+    display: none;
+  }
+  .quiz-explanation.show { display: block; }
+  .quiz-nav {
+    display: flex; justify-content: space-between; margin-top: 20px;
+  }
+  .btn {
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--accent);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    font-size: 0.85rem; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(12px);
+  }
+  .btn:hover { background: rgba(201,184,150,0.1); box-shadow: 0 0 20px var(--accent-glow); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .btn-primary:hover { background: #d4c4a4; }
+  .quiz-result {
+    text-align: center; padding: 30px 20px;
+  }
+  .quiz-result-score {
+    font-family: 'Georgia', 'Times New Roman', 'Noto Serif', serif;
+    font-size: 3rem; color: var(--accent);
+  }
+  .quiz-result-text { font-size: 1rem; margin-top: 10px; }
+  .tabs {
+    display: flex; gap: 8px; margin-bottom: 20px;
+    overflow-x: auto; padding-bottom: 4px;
+  }
+  .tab {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-dim);
+    font-size: 0.8rem; font-weight: 500;
+    cursor: pointer; white-space: nowrap;
+    backdrop-filter: blur(12px);
+  }
+  .tab.active { border-color: var(--accent); color: var(--accent); background: rgba(201,184,150,0.1); }
+  .search-overlay {
+    position: fixed; inset: 0; background: rgba(10,9,8,0.97);
+    z-index: 300; display: none; flex-direction: column;
+    padding: 20px;
+  }
+  .search-overlay.open { display: flex; }
+  .search-input {
+    width: 100%; padding: 16px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-results { margin-top: 20px; overflow-y: auto; flex: 1; }
+  .search-result-item {
+    padding: 14px; border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .search-result-item:hover { background: rgba(201,184,150,0.05); }
+  .search-result-title { font-weight: 600; color: var(--accent); font-size: 0.9rem; }
+  .search-result-snippet { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; }
+  .table-wrap { overflow-x: auto; margin: 14px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--accent); font-weight: 600; background: rgba(201,184,150,0.05); }
+  td { color: var(--text); }
+  .footer-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(10,9,8,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 100;
+  }
+  .footer-btn { font-size: 0.8rem; color: var(--text-dim); background: none; border: none; cursor: pointer; }
+  .footer-btn.active { color: var(--accent); }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.4s ease; }
+  .tag {
+    display: inline-block; padding: 4px 10px;
+    border-radius: 6px; font-size: 0.7rem; font-weight: 600;
+    margin-right: 6px; margin-bottom: 6px;
+  }
+  .tag-theory { background: rgba(201,184,150,0.1); color: var(--accent); border: 1px solid var(--accent-dim); }
+  .tag-practice { background: rgba(127,176,105,0.1); color: var(--success); border: 1px solid rgba(127,176,105,0.2); }
+  .tag-test { background: rgba(233,196,106,0.1); color: var(--warning); border: 1px solid rgba(233,196,106,0.2); }
+  .case-box {
+    background: rgba(201,184,150,0.04);
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin: 14px 0;
+  }
+  .case-title {
+    font-family: 'Georgia', 'Times New Roman', 'Noto Serif', serif;
+    font-size: 1rem; color: var(--accent);
+    margin-bottom: 10px;
+  }
+  @media (min-width: 768px) {
+    .main { padding: 90px 40px 100px; }
+    .module-title { font-size: 2rem; }
+    .card { padding: 28px; }
+  }
+
+  /* Tooltips for terms */
+  .term {
+    border-bottom: 1px dashed var(--accent);
+    cursor: help;
+    position: relative;
+    color: var(--accent);
+    transition: color 0.2s;
+  }
+  .term::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(22, 20, 18, 0.98);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.78rem;
+    color: var(--text);
+    width: max-content;
+    max-width: 300px;
+    min-width: 180px;
+    white-space: normal;
+    line-height: 1.55;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+  }
+  .term:hover::after, .term.active::after {
+    opacity: 1;
+  }
+  /* Mobile: show arrow */
+  .term::before {
+    content: '';
+    position: absolute;
+    bottom: 115%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(22, 20, 18, 0.98);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    z-index: 51;
+  }
+  .term:hover::before, .term.active::before {
+    opacity: 1;
+  }
+</style>
+<meta name="theme-color" content="#0a0908">
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+    <div>
+      <div class="header-title">ManagerBook</div>
+      <div class="header-sub">База знаний управляющего</div>
+    </div>
+    <button class="search-btn" onclick="toggleSearch()">🔍</button>
+  </header>
+  <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Модули обучения</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">0% пройдено</div>
+    </div>
+    <div id="navList"></div>
+  </nav>
+  <div class="search-overlay" id="searchOverlay">
+    <div style="display:flex;gap:12px;align-items:center;">
+      <input type="text" class="search-input" id="searchInput" placeholder="Поиск по базе знаний..." oninput="doSearch()">
+      <button class="btn" onclick="toggleSearch()">✕</button>
+    </div>
+    <div class="search-results" id="searchResults"></div>
+  </div>
+  <main class="main" id="main"></main>
+  <div class="footer-nav">
+    <button class="footer-btn" id="btnPrev" onclick="prevModule()">← Предыдущий</button>
+    <span style="font-size:0.75rem;color:var(--text-dim);" id="footerCounter">1 / 15</span>
+    <button class="footer-btn" id="btnNext" onclick="nextModule()">Следующий →</button>
+  </div>
+</div>
+<script>
+const modules = [
+  {
+    id: 1,
+    title: "Ресторан как бизнес-система",
+    time: "45 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🏛️</span> Модели ресторанного бизнеса</div>
+        <p>Ресторан — это не просто место, где готовят еду. Это сложная система, где пересекаются <strong>производство, сервис, логистика и финансы</strong>.</p>
+        <div class="highlight">
+          <strong>Основные модели:</strong><br>
+          • <strong>Fine Dining</strong> — высокая маржа, низкая оборачиваемость, акцент на опыт<br>
+          • <strong>Casual Dining</strong> — баланс цены и качества, средняя оборачиваемость<br>
+          • <strong>Fast-Casual</strong> — быстрое обслуживание, качественные ингредиенты<br>
+          • <strong>Доставка/ghost kitchen</strong> — низкий rent cost, высокий delivery cost
+        </div>
+        <p>Ресторан работает в формате <strong>casual dining с элементами fine dining</strong>: средний чек выше среднего, но атмосфера не требует смокинга.</p>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📊</span> Ключевые показатели (KPI)</div>
+        <p>Управляющий должен ежедневно оперировать цифрами:</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Показатель</th><th>Формула</th><th>Норма</th></tr>
+            <tr><td>Средний чек</td><td>Выручка / Кол-во гостей</td><td>Зависит от концепции</td></tr>
+            <tr><td>Seat Turnover</td><td>Гости / Кол-во мест</td><td>2–4 за смену</td></tr>
+            <tr><td>RevPASH</td><td>Выручка / (Места × Часы)</td><td>Макс. возможный</td></tr>
+            <tr><td>Food Cost</td><td>Себест. продуктов / Выручка от еды</td><td>25–35%</td></tr>
+            <tr><td>Labor Cost</td><td>ФОТ / Выручка</td><td>20–30%</td></tr>
+            <tr><td>Prime Cost</td><td>Food Cost + Labor Cost</td><td>≤ 60%</td></tr>
+          </table>
+        </div>
+        <div class="formula">RevPASH = Выручка ÷ (Посадочные места × Часы работы)</div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">⛓️</span> Цепочка ценности</div>
+        <p>Каждое звено влияет на конечный результат:</p>
+        <ul>
+          <li><strong>Закупки</strong> — выбор поставщиков, сравнение цен</li>
+          <li><strong>Склад</strong> — FIFO/FEFO, контроль сроков, списания</li>
+          <li><strong>Производство</strong> — техкарты, контроль порций, стандарты</li>
+          <li><strong>Сервис</strong> — скорость, качество обслуживания, апселл</li>
+          <li><strong>Финансы</strong> — учёт, анализ, прогнозирование</li>
+        </ul>
+        <div class="highlight highlight-success">
+          <strong>Правило 1%:</strong> улучшение на 1% на каждом этапе цепочки даёт суммарный рост прибыли на 10–15%. Не пытайся сделать всё идеально — улучшай по чуть-чуть везде.
+        </div>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Почему падает прибыль?»</div>
+        <p>Ресторан в августе показал выручку на 12% выше июля, но прибыль упала на 8%. В чём причина?</p>
+        <p><strong>Данные:</strong></p>
+        <ul>
+          <li>Food Cost вырос с 28% до 34%</li>
+          <li>Количество списаний увеличилось в 2 раза</li>
+          <li>Средний чек остался прежним</li>
+          <li>Гостей стало больше, но они заказывали менее маржинальные блюда</li>
+        </ul>
+        <p><strong>Вывод:</strong> рост выручки не всегда означает рост прибыли. Нужно следить за структурой продаж и контролировать расходы.</p>
+      </div>`,
+    checklist: [
+      "Знать текущий средний чек ресторана",
+      "Понимать разницу между Food Cost и Prime Cost",
+      "Уметь рассчитать RevPASH за смену",
+      "Знать свою модель бизнеса и конкурентов",
+      "Понимать цепочку ценности от закупки до гостя"
+    ],
+    quiz: [
+      { q: "Какой показатель отражает эффективность использования посадочных мест во времени?", options: ["Средний чек", "RevPASH", "Food Cost", "Labor Cost"], correct: 1, explanation: "RevPASH (Revenue Per Available Seat Hour) — выручка на одно посадочное место в час. Это ключевой показатель для оценки эффективности зала." },
+      { q: "Какая норма Food Cost для ресторана casual dining?", options: ["10–15%", "25–35%", "40–50%", "55–65%"], correct: 1, explanation: "Нормальный Food Cost для большинства ресторанов — 25–35%. Fine dining может иметь 30–40% за счёт дорогих ингредиентов." },
+      { q: "Что входит в Prime Cost?", options: ["Аренда + коммуналка", "Food Cost + Labor Cost", "Маркетинг + доставка", "Склад + логистика"], correct: 1, explanation: "Prime Cost = Food Cost + Labor Cost. Это два самых больших и управляемых расхода ресторана. Их сумма не должна превышать 60% выручки." },
+      { q: "Какая модель бизнеса подразумевает наибольшую оборачиваемость столов?", options: ["Fine Dining", "Casual Dining", "Fast-Casual", "Ghost Kitchen"], correct: 2, explanation: "Fast-Casual предполагает быстрое обслуживание и высокую оборачиваемость (3–5 раз за смену). Fine Dining — наоборот, 1–1.5 раза." },
+      { q: "По правилу 1%, улучшение на 1% на каждом этапе цепочки ценности даёт суммарный эффект:", options: ["1%", "5%", "10–15%", "50%"], correct: 2, explanation: "Комплексное улучшение всех звеньев даёт синергетический эффект — 10–15% роста прибыли." }
+    ]
+  },
+  {
+    id: 2,
+    title: "Операционный менеджмент",
+    time: "50 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🌅</span> Открытие и закрытие смены</div>
+        <p>Управляющий — первый на входе и последний на выходе. Стандартизированные процедуры — основа порядка.</p>
+        <div class="highlight">
+          <strong>Открытие смены (за 1 час до открытия):</strong><br>
+          • Проверка чистоты зала и кухни<br>
+          • Проверка работы оборудования (холодильники, плиты, POS)<br>
+          • Инвентаризация кассы<br>
+          • Брифинг персонала (меню дня, акции, ожидаемая загрузка)<br>
+          • Проверка бронирований и резервов
+        </div>
+        <div class="highlight highlight-danger">
+          <strong>Закрытие смены:</strong><br>
+          • Закрытие кассы и сверка с Z-отчётом<br>
+          • Проверка остатков на складе (критические позиции)<br>
+          • Уборка и санитарная обработка<br>
+          • Выключение оборудования (кроме холодильников)<br>
+          • Заполнение лога событий смены
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">👥</span> Планирование смен</div>
+        <p>Грамотное планирование — баланс между сервисом и экономией.</p>
+        <p><strong>FTE (Full Time Equivalent)</strong> — полная занятость. 1 FTE = 40 часов в неделю.</p>
+        <div class="formula">FTE = (Недельные часы работы × Кол-во позиций) ÷ 40</div>
+        <p><strong>Пример:</strong> зал работает 84 часа в неделю (12×7), нужно 3 официанта на смену. FTE = (84 × 3) ÷ 40 = 6.3. Значит, нужно 6–7 официантов с учётом выходных и больничных.</p>
+        <div class="highlight highlight-success">
+          <strong>Пиковые часы</strong> — время максимальной загрузки. Для ресторана это обычно пятница-суббота 19:00–22:00. В эти часы нужен максимум персонала + возможность вызвать подмену.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">✅</span> Контроль качества</div>
+        <p>Три инструмента контроля:</p>
+        <ul>
+          <li><strong>Чек-листы</strong> — ежедневные, еженедельные, ежемесячные</li>
+          <li><strong>Тайный гость</strong> — профессиональный оценщик или знакомый, который проверяет весь путь гостя</li>
+          <li><strong>Фото-стандарты</strong> — каждое блюдо должно выглядеть как на фото-эталоне</li>
+        </ul>
+        <p><strong>Тайный гость оценивает:</strong></p>
+        <ul>
+          <li>Встреча и проводы (время, манеры)</li>
+          <li>Знание меню (официант)</li>
+          <li>Скорость обслуживания (время подачи)</li>
+          <li>Качество блюд (температура, вкус, подача)</li>
+          <li>Чистота (зал, туалет, стол)</li>
+        </ul>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Провал в пятницу»</div>
+        <p>В пятницу в 20:00 в зале 45 гостей, но на линии только 2 повара вместо 4. Время ожидания блюд — 45 минут. 3 столика ушли без заказа. Что пошло не так?</p>
+        <p><strong>Анализ:</strong></p>
+        <ul>
+          <li>График составлен без учёта броней на пятницу</li>
+          <li>2 повара заболели, подмены не было</li>
+          <li>Управляющий не провёл утренний брифинг</li>
+        </ul>
+        <p><strong>Решение:</strong> внедрить систему бэкапов — список сотрудников, готовых выйти в дежурные часы за повышенную оплату.</p>
+      </div>`,
+    checklist: [
+      "Провести брифинг перед каждой сменой",
+      "Проверить кассу и Z-отчёт при закрытии",
+      "Составить график с учётом пиковых часов и броней",
+      "Провести аудит чек-листов зала и кухни",
+      "Иметь план подмены на случай неявки"
+    ],
+    quiz: [
+      { q: "За сколько времени до открытия управляющий должен быть в ресторане?", options: ["За 15 минут", "За 30 минут", "За 1 час", "За 2 часа"], correct: 2, explanation: "Стандарт — за 1 час до открытия. Это время нужно для проверки оборудования, чистоты, проведения брифинга и подготовки кассы." },
+      { q: "Что такое FTE?", options: ["Средний чек за смену", "Полная занятость (40 часов/неделю)", "Количество гостей в час", "Food Cost за неделю"], correct: 1, explanation: "FTE (Full Time Equivalent) — эквивалент полной занятости, 40 часов в неделю. Используется для расчёта штата." },
+      { q: "Какой инструмент контроля качества проверяет весь путь гостя анонимно?", options: ["Чек-лист", "Тайный гость", "Фото-стандарт", "Видеонаблюдение"], correct: 1, explanation: "Тайный гость — это анонимная проверка всего сервиса от встречи до проводов. Даёт объективную оценку реального опыта." },
+      { q: "Что НЕ входит в процедуру закрытия смены?", options: ["Сверка кассы с Z-отчётом", "Проверка остатков", "Выключение холодильников", "Заполнение лога событий"], correct: 2, explanation: "Холодильники НЕ выключаются при закрытии — это приведёт к порче продуктов. Остальное — стандартные процедуры." },
+      { q: "Какой метод помогает справиться с неожиданной неявкой персонала?", options: ["Увеличить цены", "Система бэкапов (дежурных)", "Закрыть часть зала", "Отменить брони"], correct: 1, explanation: "Система бэкапов — список сотрудников, готовых выйти вне графика за повышенную оплату. Это стандартная практика в ресторанном бизнесе." }
+    ]
+  },
+  {
+    id: 3,
+    title: "Финансовый менеджмент",
+    time: "60 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">💰</span> P&L ресторана</div>
+        <p>Отчёт о прибылях и убытках (Profit & Loss) — главный финансовый документ. Управляющий должен уметь читать и составлять P&L.</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Статья</th><th>% от выручки</th><th>Комментарий</th></tr>
+            <tr><td><strong>Выручка</strong></td><td>100%</td><td>Всё, что заплатили гости</td></tr>
+            <tr><td>− Себестоимость (COGS)</td><td>25–35%</td><td>Продукты, напитки</td></tr>
+            <tr><td>= <strong>Валовая прибыль</strong></td><td>65–75%</td><td>Gross Profit</td></tr>
+            <tr><td>− ФОТ (Labor)</td><td>20–30%</td><td>Зарплаты, налоги</td></tr>
+            <tr><td>− Аренда</td><td>8–12%</td><td>Зависит от локации</td></tr>
+            <tr><td>− Коммуналка</td><td>3–5%</td><td>Свет, вода, газ</td></tr>
+            <tr><td>− Маркетинг</td><td>2–5%</td><td>Реклама, промо</td></tr>
+            <tr><td>− Прочие</td><td>3–5%</td><td>Расходные материалы</td></tr>
+            <tr><td>= <strong>Чистая прибыль (EBITDA)</strong></td><td>10–20%</td><td>Цель бизнеса</td></tr>
+          </table>
+        </div>
+        <div class="highlight">
+          <strong>EBITDA</strong> — прибыль до вычета процентов, налогов и амортизации. Для ресторана норма 10–20%. Меньше 10% — зона риска.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🧮</span> Food Cost и расчёт себестоимости</div>
+        <p>Food Cost — доля продуктов в выручке:</p>
+        <div class="formula">Food Cost = (Стоимость продуктов за период ÷ Выручка от еды) × 100%</div>
+        <p>Себестоимость <strong>каждого блюда</strong>:</p>
+        <div class="formula">Себестоимость = Σ (Цена ингредиента × Норма расхода netto)</div>
+        <p><strong>Пример:</strong> бургер требует котлету 150г (150₽), булку 80г (25₽), соус 30г (15₽), овощи 50г (20₽). Себестоимость = 210₽. Если продаётся за 600₽, маржа = 390₽ (65%).</p>
+        <div class="highlight highlight-success">
+          <strong>Совет:</strong> считайте себестоимость по brutto (вес до очистки), а норму расхода — по netto (вес готового к использованию). Разница — отходы, которые тоже стоят денег.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📉</span> Точка безубыточности</div>
+        <p>Точка безубыточности (Break-Even Point) — минимальная выручка, при которой ресторан не уходит в минус.</p>
+        <div class="formula">BEP = Постоянные расходы ÷ (1 − Переменные расходы / Выручка)</div>
+        <p><strong>Пример:</strong> постоянные расходы = 300 000₽/мес. Переменные = 45% от выручки.</p>
+        <p>BEP = 300 000 ÷ (1 − 0.45) = 300 000 ÷ 0.55 = <strong>545 455₽/мес</strong> или ~18 200₽/день.</p>
+        <div class="highlight highlight-danger">
+          Если выручка ниже BEP более 2 месяцев подряд — нужен антикризисный план: сокращение меню, пересмотр поставщиков, оптимизация штата.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📋</span> Маржинальность и меню-инжиниринг</div>
+        <p>Все блюда меню делятся на 4 категории:</p>
+        <ul>
+          <li><strong>⭐ Звёзды</strong> — высокая маржа + высокие продажи. Главные драйверы прибыли.</li>
+          <li><strong>🐴 Лошади</strong> — низкая маржа + высокие продажи. Привлекают гостей, но мало зарабатывают.</li>
+          <li><strong>🧩 Головоломки</strong> — высокая маржа + низкие продажи. Нужно продвигать.</li>
+          <li><strong>🐕 Собаки</strong> — низкая маржа + низкие продажи. Убрать из меню.</li>
+        </ul>
+        <p>Управляющий должен раз в месяц анализировать отчёт по продажам и пересматривать меню.</p>
+      </div>`,
+    checklist: [
+      "Уметь читать P&L ресторана",
+      "Рассчитать Food Cost за неделю",
+      "Посчитать себестоимость любого блюда по техкарте",
+      "Знать точку безубыточности ресторана",
+      "Провести анализ меню (звёзды/лошади/головоломки/собаки)"
+    ],
+    quiz: [
+      { q: "Какая норма чистой прибыли (EBITDA) для ресторана?", options: ["1–5%", "5–10%", "10–20%", "30–40%"], correct: 2, explanation: "Нормальная EBITDA для ресторана — 10–20%. Меньше 10% — зона риска, требующая оптимизации." },
+      { q: "Что такое Prime Cost?", options: ["Аренда + коммуналка", "Food Cost + Labor Cost", "Маркетинг + доставка", "Все расходы минус выручка"], correct: 1, explanation: "Prime Cost = Food Cost + Labor Cost. Это два крупнейших управляемых расхода, в сумме не должны превышать 60%." },
+      { q: "Какие блюда имеют высокую маржу, но низкие продажи?", options: ["Звёзды", "Лошади", "Головоломки", "Собаки"], correct: 2, explanation: "Головоломки — высокая маржа, низкие продажи. Их нужно продвигать через официантов, фото в меню, акции." },
+      { q: "При расчёте себестоимости блюда используется вес ингредиента:", options: ["Brutto (до очистки)", "Netto (готовый к использованию)", "Выход готового блюда", "Любой из перечисленных"], correct: 1, explanation: "Норма расхода в техкарте указывается по netto — весу готового к использованию продукта. Brutto нужен для закупок." },
+      { q: "Если выручка ниже точки безубыточности 2 месяца подряд, нужно:", options: ["Ждать улучшения", "Закрыть ресторан", "Разработать антикризисный план", "Повысить цены в 2 раза"], correct: 2, explanation: "Два месяца ниже BEP — сигнал тревоги. Нужен антикризисный план: оптимизация меню, пересмотр поставщиков, сокращение расходов." }
+    ]
+  },
+  {
+    id: 4,
+    title: "Управление персоналом",
+    time: "55 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🎯</span> Подбор персонала</div>
+        <p>Кадры решают всё. Плохой повар испортит блюдо, плохой официант — весь вечер.</p>
+        <p><strong>Источники поиска:</strong></p>
+        <ul>
+          <li>Рекомендации текущих сотрудников (лучший канал)</li>
+          <li>Telegram-каналы ресторанного сообщества</li>
+          <li>HeadHunter, SuperJob (для административных позиций)</li>
+          <li>Кулинарные колледжи и техникумы (для поваров)</li>
+          <li>Стажировки с последующим трудоустройством</li>
+        </ul>
+        <div class="highlight">
+          <strong>Структура собеседования:</strong><br>
+          1. <strong>Резюме</strong> — опыт, стабильность (частые смены — тревожный знак)<br>
+          2. <strong>Тестовое</strong> — для поваров: приготовить блюдо; для официантов: презентация меню<br>
+          3. <strong>Ситуационные вопросы</strong> — «Гость недоволен стейком. Ваши действия?»<br>
+          4. <strong>Мотивация</strong> — почему именно наш ресторан? Какие цели?<br>
+          5. <strong>Референс</strong> — звонок предыдущему работодателю
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🌱</span> Адаптация: первые 14 дней</div>
+        <p>50% увольнений происходят в первый месяц. Грамотная адаптация снижает текучку.</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th>День</th><th>Что происходит</th></tr>
+            <tr><td>1</td><td>Экскурсия, знакомство с командой, выдача униформы, инструктаж по ТБ</td></tr>
+            <tr><td>2–3</td><td>Обучение стандартам, изучение меню, дегустация блюд</td></tr>
+            <tr><td>4–7</td><td>Работа под наблюдением наставника (buddy system)</td></tr>
+            <tr><td>8–10</td><td>Самостоятельная работа с периодической проверкой</td></tr>
+            <tr><td>11–14</td><td>Обратная связь, корректировка, план развития</td></tr>
+          </table>
+        </div>
+        <div class="highlight highlight-success">
+          <strong>Buddy system:</strong> каждому новичку назначается наставник из числа опытных сотрудников. Наставник получает бонус за успешную адаптацию (например, 3000₽ через месяц, если новичок остался).
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🏆</span> Мотивация и KPI</div>
+        <p>Зарплата — не единственный мотиватор. Система мотивации должна включать:</p>
+        <ul>
+          <li><strong>Фикс</strong> — стабильная часть (60–70%)</li>
+          <li><strong>Переменная</strong> — зависит от результатов (30–40%)</li>
+          <li><strong>Нематериальная</strong> — признание, рост, обучение</li>
+        </ul>
+        <p><strong>KPI по ролям:</strong></p>
+        <ul>
+          <li><strong>Официант:</strong> средний чек стола, количество столиков, отзывы</li>
+          <li><strong>Повар:</strong> время приготовления, списания, соблюдение техкарт</li>
+          <li><strong>Су-шеф:</strong> Food Cost, контроль качества, обучение команды</li>
+          <li><strong>Управляющий:</strong> выручка, прибыль, текучка, NPS гостей</li>
+        </ul>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">⚠️</span> Дисциплина и увольнения</div>
+        <p>Дисциплина — это не крик. Это чёткие правила и последствия.</p>
+        <div class="highlight highlight-danger">
+          <strong>Градация нарушений:</strong><br>
+          • <strong>Замечание</strong> — устное, фиксируется в логе<br>
+          • <strong>Выговор</strong> — письменное, влияет на премию<br>
+          • <strong>Увольнение</strong> — грубое нарушение (кража, агрессия)
+        </div>
+        <p><strong>Причины увольнения (статистика):</strong></p>
+        <ul>
+          <li>Плохие отношения с руководством (30%)</li>
+          <li>Отсутствие роста (25%)</li>
+          <li>Низкая зарплата (20%)</li>
+          <li>Непредвиденные обстоятельства (15%)</li>
+          <li>Переезд/смена сферы (10%)</li>
+        </ul>
+        <p>Из первых трёх пунктов управляющий может влиять напрямую.</p>
+      </div>`,
+    checklist: [
+      "Провести собеседование по структуре (5 этапов)",
+      "Назначить buddy для нового сотрудника",
+      "Разработать систему KPI для каждой роли",
+      "Провести 1-to-1 с каждым сотрудником раз в месяц",
+      "Вести лог нарушений и поощрений"
+    ],
+    quiz: [
+      { q: "Какой канал поиска персонала считается самым эффективным?", options: ["HeadHunter", "Рекомендации сотрудников", "SuperJob", "Объявления в соцсетях"], correct: 1, explanation: "Рекомендации текущих сотрудников — самый надёжный канал. Рекомендующий не рискует репутацией ради случайного человека." },
+      { q: "Какой процент увольнений приходится на первый месяц работы?", options: ["10%", "25%", "50%", "75%"], correct: 2, explanation: "Около 50% увольнений происходят в первый месяц. Грамотная адаптация критически важна для удержания кадров." },
+      { q: "Что такое buddy system?", options: ["Система штрафов", "Наставничество новичка", "График смен", "Программа лояльности"], correct: 1, explanation: "Buddy system — назначение опытного наставника (buddy) для нового сотрудника на период адаптации." },
+      { q: "Какая причина увольнения встречается чаще всего?", options: ["Низкая зарплата", "Отсутствие роста", "Плохие отношения с руководством", "Переезд"], correct: 2, explanation: "Плохие отношения с руководством — 30% увольнений. Это значит, что управляющий напрямую влияет на текучку через стиль управления." },
+      { q: "Какой процент зарплаты должен быть переменной (зависеть от KPI)?", options: ["10–20%", "30–40%", "50–60%", "70–80%"], correct: 1, explanation: "Оптимально 30–40% переменной части. Это мотивирует без создания чрезмерного стресса и нестабильности." }
+    ]
+  },
+  {
+    id: 5,
+    title: "Кухня и технологические карты",
+    time: "40 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📋</span> Структура техкарты</div>
+        <p>Технологическая карта — это закон для кухни. Без неё невозможен контроль качества и себестоимости.</p>
+        <div class="highlight">
+          <strong>Обязательные элементы техкарты:</strong><br>
+          • Название блюда и категория меню<br>
+          • Фото эталонной подачи<br>
+          • Состав (ингредиенты с указанием brutto/netto)<br>
+          • Технология приготовления (пошагово)<br>
+          • Время приготовления<br>
+          • Выход готового блюда<br>
+          • Себестоимость и розничная цена<br>
+          • Срок хранения заготовок и готового блюда
+        </div>
+        <p><strong>Brutto</strong> — вес сырого продукта (для закупок).<br>
+        <strong>Netto</strong> — вес после очистки/обработки (для расчёта норм).<br>
+        <strong>Выход</strong> — вес готового блюда на тарелке.</p>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">⚖️</span> Контроль порционности</div>
+        <p>Даже 10г перебора на порции при 100 продажах в день = 1кг продукта = 500–1000₽ убытка в день.</p>
+        <p><strong>Методы контроля:</strong></p>
+        <ul>
+          <li><strong>Весовой контроль</strong> — каждое блюдо проходит через весы перед подачей</li>
+          <li><strong>Фото-стандарты</strong> — фото эталона рядом с линией выдачи</li>
+          <li><strong>Перекрёстная проверка</strong> — су-шеф проверяет каждое 5–10 блюдо</li>
+          <li><strong>Анализ списаний</strong> — если списания растут, значит, где-то перерасход</li>
+        </ul>
+        <div class="highlight highlight-success">
+          <strong>Правило 5%:</strong> допустимое отклонение веса порции — ±5%. Больше — это уже системная проблема.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🔄</span> Планирование заготовок</div>
+        <p>Mise en place — всё на своих местах. Грамотное планирование заготовок сокращает время приготовления и снижает стресс на линии.</p>
+        <p><strong>Принципы:</strong></p>
+        <ul>
+          <li>Готовить заготовки <strong>перед открытием</strong>, а не во время пика</li>
+          <li>Рассчитывать объём по <strong>прогнозу продаж</strong> (вчерашний день + брони)</li>
+          <li>Хранить заготовки в <strong>порционных контейнерах</strong> с маркировкой</li>
+          <li>Соблюдать <strong>сроки хранения</strong> — записывать время изготовления</li>
+        </ul>
+        <div class="highlight highlight-danger">
+          <strong>Ошибка:</strong> готовить заготовки «на глазок». Это приводит либо к недостаче в пик (гость ждёт), либо к излишкам (списания).
+        </div>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Почему блюда разные?»</div>
+        <p>Гости жалуются: вчера суп был густым, сегодня — жидким. Стейк вчера был 220г, сегодня — 180г. Что не так?</p>
+        <p><strong>Анализ:</strong></p>
+        <ul>
+          <li>Нет единой техкарты — каждый повар готовит «по своему»</li>
+          <li>Нет весового контроля на выдаче</li>
+          <li>Нет фото-стандарта подачи</li>
+        </ul>
+        <p><strong>Решение:</strong> внедрить ChefBook — единую базу техкарт с фото, весами и пошаговой технологией.</p>
+      </div>`,
+    checklist: [
+      "Проверить, что у каждого блюда есть актуальная техкарта",
+      "Провести весовой контроль 10 случайных блюд за смену",
+      "Сверить фактический выход с техкартой",
+      "Проверить сроки хранения всех заготовок",
+      "Сделать фото-стандарты для ТОП-10 блюд"
+    ],
+    quiz: [
+      { q: "Какой вес указывается в техкарте для расчёта норм расхода?", options: ["Brutto", "Netto", "Выход готового блюда", "Brutto и Netto"], correct: 1, explanation: "Норма расхода указывается по netto — весу готового к использованию продукта. Brutto используется для закупок." },
+      { q: "Какое допустимое отклонение веса порции?", options: ["±1%", "±3%", "±5%", "±10%"], correct: 2, explanation: "Допустимое отклонение — ±5%. Больше — системная проблема, требующая вмешательства управляющего." },
+      { q: "Когда лучше всего готовить заготовки (mise en place)?", options: ["Во время пика", "Перед открытием", "После закрытия", "Когда закончатся"], correct: 1, explanation: "Заготовки готовятся перед открытием. Во время пика линия должна только собирать и доводить блюда." },
+      { q: "Что такое mise en place?", options: ["Французский соус", "Всё на своих местах (подготовка)", "Тип ножа", "Метод жарки"], correct: 1, explanation: "Mise en place — французский термин, означающий полную подготовку ингредиентов и инструментов перед началом работы." },
+      { q: "Почему важны фото-стандарты подачи?", options: ["Для Instagram", "Для единообразия и контроля", "Для меню", "Для маркетинга"], correct: 1, explanation: "Фото-стандарты нужны для единообразия подачи и контроля качества. Каждый повар видит, как должно выглядеть блюдо." }
+    ]
+  },
+  {
+    id: 6,
+    title: "Закупки, склад и инвентаризация",
+    time: "45 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🏭</span> Выбор поставщиков</div>
+        <p>Выбор поставщика — это не только цена. Это качество, стабильность, сервис и репутация.</p>
+        <div class="highlight">
+          <strong>Критерии выбора поставщика:</strong><br>
+          • <strong>Цена</strong> — не самая важная, но критичная метрика<br>
+          • <strong>Качество</strong> — соответствие спецификации, сроки годности<br>
+          • <strong>Надёжность</strong> — процент своевременных поставок<br>
+          • <strong>Гибкость</strong> — возможность срочных/мелких заказов<br>
+          • <strong>Документооборот</strong> — корректные УПД, сертификаты<br>
+          • <strong>Работа с претензиями</strong> — возврат, замена, компенсация
+        </div>
+        <p><strong>Сравнительный анализ:</strong> ведите таблицу с ценами по ключевым позициям у разных поставщиков. Обновляйте раз в месяц.</p>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📦</span> Складская логистика</div>
+        <p>Правильная организация склада сокращает время поиска, минимизирует списания и упрощает инвентаризацию.</p>
+        <p><strong>Принципы хранения:</strong></p>
+        <ul>
+          <li><strong>FIFO</strong> — First In, First Out (первым пришёл — первым ушёл)</li>
+          <li><strong>FEFO</strong> — First Expired, First Out (первым истекает срок — первым ушёл)</li>
+          <li><strong>Зонирование</strong> — сухой склад, холодильник, морозилка, бар</li>
+          <li><strong>Маркировка</strong> — дата приёмки, дата открытия, срок годности</li>
+          <li><strong>Чистота</strong> — ежедневная уборка, контроль влажности и температуры</li>
+        </ul>
+        <div class="highlight highlight-success">
+          <strong>Совет:</strong> разделите склад на зоны А, Б, В. Зона А — товары с высоким оборотом (молоко, яйца, мясо). Они должны быть в самом доступном месте.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📊</span> ABC/XYZ-анализ</div>
+        <p>Не все продукты одинаково важны. ABC/XYZ-анализ помогает расставить приоритеты.</p>
+        <p><strong>ABC-анализ (по выручке):</strong></p>
+        <ul>
+          <li><strong>Группа А</strong> — 20% позиций, 80% выручки. Контроль каждую смену.</li>
+          <li><strong>Группа Б</strong> — 30% позиций, 15% выручки. Контроль раз в неделю.</li>
+          <li><strong>Группа В</strong> — 50% позиций, 5% выручки. Контроль раз в месяц.</li>
+        </ul>
+        <p><strong>XYZ-анализ (по предсказуемости спроса):</strong></p>
+        <ul>
+          <li><strong>X</strong> — стабильный спрос (молоко, яйца, хлеб)</li>
+          <li><strong>Y</strong> — сезонный/колеблющийся спрос (ягоды, тыква)</li>
+          <li><strong>Z</strong> — случайный спрос (экзотические ингредиенты)</li>
+        </ul>
+        <div class="formula">AX = заказывать точно | AY = заказывать с запасом | AZ = заказывать под заказ</div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🧮</span> Инвентаризация</div>
+        <p>Инвентаризация — сверка фактических остатков с учётными данными.</p>
+        <p><strong>Частота:</strong></p>
+        <ul>
+          <li><strong>Ежедневно:</strong> касса, алкоголь, дорогие продукты (икра, трюфели)</li>
+          <li><strong>Еженедельно:</strong> мясо, рыба, молочка</li>
+          <li><strong>Ежемесячно:</strong> полная инвентаризация всего склада</li>
+        </ul>
+        <p><strong>Расчёт недостачи/излишка:</strong></p>
+        <div class="formula">Остаток = Приход − Расход − Списания</div>
+        <div class="formula">Недостача = Учётный остаток − Фактический остаток</div>
+        <div class="highlight highlight-danger">
+          <strong>Важно:</strong> инвентаризация проводится <strong>вдвоём</strong> (считает + записывает). После инвентаризации — подпись ответственного лица.
+        </div>
+      </div>`,
+    checklist: [
+      "Провести сравнительный анализ поставщиков по ТОП-20 позициям",
+      "Проверить маркировку и зонирование склада",
+      "Провести ABC-анализ складских позиций",
+      "Сверить остатки дорогих продуктов (ежедневно)",
+      "Проверить соблюдение FIFO/FEFO на складе"
+    ],
+    quiz: [
+      { q: "Какой принцип хранения означает 'первым пришёл — первым ушёл'?", options: ["FEFO", "FIFO", "LIFO", "JIT"], correct: 1, explanation: "FIFO (First In, First Out) — первым пришёл, первым ушёл. Основной принцип складского учёта продуктов." },
+      { q: "Какая группа ABC-анализа требует контроля каждую смену?", options: ["Группа А", "Группа Б", "Группа В", "Все группы"], correct: 0, explanation: "Группа А — 20% позиций, 80% выручки. Это критически важные продукты, требующие ежедневного контроля." },
+      { q: "Сколько человек должно участвовать в инвентаризации?", options: ["1", "2", "3", "Весь персонал"], correct: 1, explanation: "Инвентаризация проводится вдвоём: один считает, другой записывает. Это минимизирует ошибки и мошенничество." },
+      { q: "Что такое FEFO?", options: ["Первым пришёл — первым ушёл", "Первым истекает срок — первым ушёл", "Последним пришёл — первым ушёл", "Точно в срок"], correct: 1, explanation: "FEFO (First Expired, First Out) — первым истекает срок годности, первым используется. Критично для продуктов с коротким сроком." },
+      { q: "Какие продукты инвентаризируются ежедневно?", options: ["Все продукты", "Только алкоголь", "Касса, алкоголь, дорогие продукты", "Только мясо и рыба"], correct: 2, explanation: "Ежедневно инвентаризируются касса, алкоголь и дорогие продукты (икра, трюфели, крабы). Мясо и рыба — еженедельно." }
+    ]
+  },
+  {
+    id: 7,
+    title: "Сервис и гостеприимство",
+    time: "40 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🤝</span> Стандарты обслуживания</div>
+        <p>Сервис — это не только подача блюд. Это весь путь гостя от входа до выхода.</p>
+        <div class="highlight">
+          <strong>Путь гостя:</strong><br>
+          1. <strong>Встреча</strong> — за 10 секунд, улыбка, приветствие<br>
+          2. <strong>Проводка к столу</strong> — предложение выбрать, помощь с одеждой<br>
+          3. <strong>Презентация меню</strong> — акцент на звёздах и головоломках<br>
+          4. <strong>Приём заказа</strong> — активное слушание, рекомендации, апселл<br>
+          5. <strong>Сервировка</strong> — правильная посуда, температура, подача<br>
+          6. <strong>Чек-ин</strong> — «Всё ли вам понравилось?»<br>
+          7. <strong>Счёт и проводы</strong> — быстро, вежливо, приглашение вернуться
+        </div>
+        <p><strong>Время подачи:</strong></p>
+        <ul>
+          <li>Холодные закуски — до 10 минут</li>
+          <li>Салаты — до 12 минут</li>
+          <li>Супы — до 10 минут</li>
+          <li>Горячие блюда — до 20 минут</li>
+          <li>Десерты — до 10 минут</li>
+        </ul>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">💬</span> Работа с жалобами: техника HEARD</div>
+        <p>Жалоба — это подарок. Гость, который жалуется, даёт шанс всё исправить. Гость, который молча уходит — уже потерян.</p>
+        <div class="highlight">
+          <strong>HEARD:</strong><br>
+          <strong>H</strong>ear — Выслушайте полностью, не перебивая<br>
+          <strong>E</strong>mpathize — Покажите сочувствие («Понимаю ваше разочарование»)<br>
+          <strong>A</strong>pologize — Извинитесь искренне, даже если не ваша вина<br>
+          <strong>R</strong>esolve — Предложите решение (замена, компенсация, скидка)<br>
+          <strong>D</strong>iagnose — Разберитесь, почему это произошло, чтобы не повторилось
+        </div>
+        <div class="highlight highlight-success">
+          <strong>Правило:</strong> решение жалобы должно быть предложено <strong>в течение 2 минут</strong>. Чем быстрее — тем выше шанс, что гость вернётся.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📈</span> Повышение среднего чека</div>
+        <p>Увеличить средний чек можно без повышения цен — через навыки официантов.</p>
+        <p><strong>Апселл (upsell):</strong></p>
+        <ul>
+          <li>«К нашему стейку рекомендую соус трюфельный — отлично дополняет»</li>
+          <li>«Бургер доступен с говядиной Black Angus за небольшую доплату»</li>
+        </ul>
+        <p><strong>Кросс-селл (cross-sell):</strong></p>
+        <ul>
+          <li>«К пасте отлично подойдёт бокал Пино Гриджио»</li>
+          <li>«К десерту рекомендую эспрессо — классическое сочетание»</li>
+        </ul>
+        <div class="formula">Рост среднего чека на 10% = рост прибыли на 25–30%</div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">⭐</span> NPS и отзывы</div>
+        <p>NPS (Net Promoter Score) — индекс лояльности гостей.</p>
+        <div class="formula">NPS = % Промоутеров (9–10) − % Критиков (0–6)</div>
+        <p><strong>Шкала:</strong></p>
+        <ul>
+          <li><strong>Детракторы (0–6)</strong> — недовольны, расскажут о плохом опыте</li>
+          <li><strong>Пассивные (7–8)</strong> — нейтральны, легко уйдут к конкуренту</li>
+          <li><strong>Промоутеры (9–10)</strong> — лояльны, рекомендуют друзьям</li>
+        </ul>
+        <div class="highlight highlight-danger">
+          <strong>Цель:</strong> NPS выше 50 — отлично, 30–50 — хорошо, ниже 30 — тревожный сигнал.
+        </div>
+      </div>`,
+    checklist: [
+      "Проверить время встречи гостя (до 10 секунд)",
+      "Провести тренинг по технике HEARD для официантов",
+      "Разработать скрипты апселла для ТОП-5 блюд",
+      "Собрать NPS за неделю (опрос гостей)",
+      "Проанализировать отзывы на Яндекс.Картах и 2ГИС"
+    ],
+    quiz: [
+      { q: "Что означает буква H в технике HEARD?", options: ["Help — помочь", "Hear — выслушать", "Hold — подождать", "Hope — надеяться"], correct: 1, explanation: "H = Hear (Выслушать). Первый шаг — дать гостю высказаться полностью, не перебивая и не оправдываясь." },
+      { q: "Какое время подачи горячего блюда считается нормой?", options: ["До 10 минут", "До 15 минут", "До 20 минут", "До 30 минут"], correct: 2, explanation: "Норма подачи горячего блюда — до 20 минут. Больше — гость начинает нервничать и жаловаться." },
+      { q: "Что такое апселл (upsell)?", options: ["Предложение дополнительного товара", "Предложение более дорогой версии", "Скидка на комплект", "Бесплатная доставка"], correct: 1, explanation: "Апселл — предложение более дорогой/премиальной версии того же товара (например, стейк Prime вместо Choice)." },
+      { q: "Какой NPS считается отличным результатом?", options: ["Выше 10", "Выше 30", "Выше 50", "Выше 80"], correct: 2, explanation: "NPS выше 50 — отличный результат. Выше 70 — мировой уровень (Apple, Amazon)." },
+      { q: "Какой процент роста прибыли даёт увеличение среднего чека на 10%?", options: ["5–10%", "10–15%", "25–30%", "50%"], correct: 2, explanation: "Рост среднего чека на 10% даёт рост прибыли на 25–30%, потому что дополнительная выручка идёт почти целиком в прибыль (дополнительные затраты минимальны)." }
+    ]
+  },
+  {
+    id: 8,
+    title: "Маркетинг и продажи",
+    time: "35 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🎯</span> Positioning и УТП</div>
+        <p>Прежде чем рекламировать, нужно понять: кто вы и зачем гость должен прийти именно к вам.</p>
+        <div class="highlight">
+          <strong>УТП (Уникальное торговое предложение):</strong><br>
+          • Что делает вас особенными?<br>
+          • Какую проблему гостя вы решаете?<br>
+          • Почему вас невозможно заменить конкурентом?<br>
+          • Что гость получает, чего нет у других?
+        </div>
+        <p>Пример УТП для ресторана: <em>«Авторская кухня с сезонными локальными продуктами в уютной атмосфере загородного дома»</em>.</p>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📱</span> Digital-маркетинг</div>
+        <p>Современный ресторан не может существовать без цифрового присутствия.</p>
+        <p><strong>Каналы:</strong></p>
+        <ul>
+          <li><strong>Instagram</strong> — визуальная история, Stories, Reels с процессом приготовления</li>
+          <li><strong>Яндекс.Карты / 2ГИС</strong> — отзывы, фото, актуальное меню</li>
+          <li><strong>Telegram</strong> — канал ресторана, рассылка акций</li>
+          <li><strong>Сайт / лендинг</strong> — меню, бронирование, контакты</li>
+        </ul>
+        <div class="highlight highlight-success">
+          <strong>Правило контента:</strong> 80% — полезный/развлекательный контент (рецепты, закулисье, команда), 20% — прямые продажи (меню, акции).
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🤝</span> Оффлайн-маркетинг</div>
+        <p>Не забывайте про реальный мир — он даёт самых лояльных гостей.</p>
+        <ul>
+          <li><strong>Коллаборации</strong> — совместные ужины с винодельнями, фермерами</li>
+          <li><strong>Корпоративные клиенты</strong> — обеды, банкеты, доставка в офисы</li>
+          <li><strong>События</strong> — дегустации, мастер-классы, праздники</li>
+          <li><strong>Программа лояльности</strong> — кэшбэк, скидки на ДР, накопительная система</li>
+        </ul>
+        <div class="highlight">
+          <strong>ROI маркетинга:</strong> отслеживайте, откуда пришёл гость. Промокоды, QR-коды на разных каналах, вопрос официанту — всё это помогает понять, какой канал работает.
+        </div>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Пустой зал в понедельник»</div>
+        <p>В понедельник зал заполнен на 20%. Как привлечь гостей без скидок?</p>
+        <p><strong>Решения:</strong></p>
+        <ul>
+          <li>«Ужин с шефом» — понедельник, фиксированное меню, шеф выходит к гостям</li>
+          <li>Корпоративные обеды — договориться с ближайшими офисами</li>
+          <li>Дегустация вина — привлечь винный бутик-партнёра</li>
+          <li>Закрытая вечеринка для постоянных гостей</li>
+        </ul>
+        <p><strong>Результат:</strong> загрузка понедельника выросла до 60% без скидок.</p>
+      </div>`,
+    checklist: [
+      "Сформулировать УТП ресторана в 1 предложении",
+      "Обновить фото и информацию на Яндекс.Картах",
+      "Составить контент-план на месяц (4 поста в неделю)",
+      "Запустить программу лояльности для постоянных гостей",
+      "Провести 1 коллаборацию в месяц"
+    ],
+    quiz: [
+      { q: "Какое соотношение полезного контента к продающему рекомендуется в соцсетях?", options: ["50/50", "60/40", "80/20", "90/10"], correct: 2, explanation: "Правило 80/20: 80% полезного/развлекательного контента и 20% прямых продаж. Это сохраняет аудиторию и не вызывает отписки." },
+      { q: "Что такое УТП?", options: ["Универсальный тарифный план", "Уникальное торговое предложение", "Управление товарными потоками", "Учёт трудовых процессов"], correct: 1, explanation: "УТП — Уникальное Торговое Предложение. Ответ на вопрос 'почему гость должен прийти именно к нам, а не к конкуренту?'" },
+      { q: "Какой канал даёт самых лояльных гостей?", options: ["Instagram", "Яндекс.Карты", "Оффлайн (коллаборации, события)", "Контекстная реклама"], correct: 2, explanation: "Оффлайн-мероприятия и коллаборации дают самых лояльных гостей, потому что они уже пережили опыт и лично познакомились с командой." },
+      { q: "Как отследить ROI маркетинговой кампании?", options: ["По количеству лайков", "По промокодам и QR-кодам", "По охватам", "По подписчикам"], correct: 1, explanation: "Промокоды и QR-коды на разных каналах позволяют точно отследить, откуда пришёл гость и какой канал окупается." },
+      { q: "Как наполнить пустой понедельник без скидок?", options: ["Закрыть ресторан", "Устроить 'Ужин с шефом'", "Снизить цены в 2 раза", "Уволить персонал"], correct: 1, explanation: "Событийный маркетинг ('Ужин с шефом', дегустации) привлекает гостей без демпинга цен, создавая уникальный опыт." }
+    ]
+  },
+  {
+    id: 9,
+    title: "Безопасность и законодательство",
+    time: "35 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🛡️</span> ХАССП (HACCP)</div>
+        <p>HACCP (Hazard Analysis and Critical Control Points) — система анализа рисков и критических контрольных точек. Обязательна для всех предприятий общепита.</p>
+        <div class="highlight">
+          <strong>7 принципов ХАССП:</strong><br>
+          1. Провести анализ опасностей<br>
+          2. Определить критические контрольные точки (ККТ)<br>
+          3. Установить критические пределы<br>
+          4. Создать систему мониторинга ККТ<br>
+          5. Определить корректирующие действия<br>
+          6. Создать систему верификации<br>
+          7. Вести документацию
+        </div>
+        <p><strong>Критические точки на кухне:</strong></p>
+        <ul>
+          <li>Приёмка продуктов (температура, сроки, документы)</li>
+          <li>Хранение (температурный режим холодильников)</li>
+          <li>Тепловая обработка (внутренняя температура мяса ≥74°C)</li>
+          <li>Охлаждение (с 60°C до 21°C за 2 часа)</li>
+          <li>Разогрев (до ≥74°C за 2 минуты)</li>
+        </ul>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📋</span> СанПиН и требования</div>
+        <p>СанПиН 2.3/2.4.3590-20 — основной документ, регулирующий работу общепита.</p>
+        <div class="highlight highlight-danger">
+          <strong>Что проверяет Роспотребнадзор:</strong><br>
+          • Наличие медкнижек у всех сотрудников<br>
+          • Соответствие помещений нормам (площадь, отделка)<br>
+          • Температурные режимы холодильного оборудования<br>
+          • Маркировка продуктов (дата изготовления, срок годности)<br>
+          • Наличие журналов (дезинфекция, уборка, бракераж)<br>
+          • Соответствие воды нормам (актуальные анализы)
+        </div>
+        <p><strong>Штрафы:</strong> от 10 000₽ (должностное лицо) до 1 000 000₽ (юрлицо) за грубые нарушения.</p>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">⚖️</span> Трудовое законодательство</div>
+        <p>Управляющий должен знать основы ТК РФ, чтобы не создавать риски для бизнеса.</p>
+        <ul>
+          <li><strong>Трудовой договор</strong> — обязателен с первого дня работы</li>
+          <li><strong>График</strong> — должен быть известен за 2 недели</li>
+          <li><strong>Переработки</strong> — не более 4 часов в 2 дня подряд, оплачиваются ×1.5 и ×2</li>
+          <li><strong>Отпуск</strong> — 28 календарных дней, должен быть предоставлен каждый год</li>
+          <li><strong>Увольнение</strong> — по соглашению, по статье, по собственному желанию</li>
+        </ul>
+        <div class="highlight highlight-success">
+          <strong>Совет:</strong> ведите личные дела сотрудников, отслеживайте сроки медкнижек и отпусков. Штраф за отсутствие договора — до 100 000₽.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🍷</span> Алкогольная лицензия</div>
+        <p>Розничная продажа алкоголя требует лицензии. Без неё — уголовная ответственность.</p>
+        <p><strong>Условия:</strong></p>
+        <ul>
+          <li>Лицензия выдаётся Росалкогольрегулированием</li>
+          <li>Срок действия — 1 год (продлевается)</li>
+          <li>Обязательна ЕГАИС — электронная передача данных о каждой бутылке</li>
+          <li>Продажа несовершеннолетним — штраф до 300 000₽ + аннулирование лицензии</li>
+        </ul>
+        <div class="highlight highlight-danger">
+          <strong>Критично:</strong> каждая бутылка алкоголя должна быть учтена в ЕГАИС. Несоответствие учёта — основание для аннулирования лицензии.
+        </div>
+      </div>`,
+    checklist: [
+      "Проверить актуальность медкнижек всех сотрудников",
+      "Проверить температурные режимы холодильников",
+      "Убедиться, что все журналы ХАССП заполнены",
+      "Проверить срок действия алкогольной лицензии",
+      "Проверить наличие трудовых договоров у всех сотрудников"
+    ],
+    quiz: [
+      { q: "Что означает аббревиатура HACCP?", options: ["Гигиена и чистота", "Анализ рисков и критические точки", "Санитарные нормы", "Контроль качества"], correct: 1, explanation: "HACCP = Hazard Analysis and Critical Control Points. Система анализа рисков и контроля критических точек на производстве." },
+      { q: "Какая минимальная внутренняя температура при тепловой обработке мяса?", options: ["60°C", "65°C", "74°C", "85°C"], correct: 2, explanation: "Внутренняя температура мяса при тепловой обработке должна быть не менее 74°C. Это гарантирует уничтожение патогенных бактерий." },
+      { q: "Какой штраф грозит юрлицу за грубые нарушения СанПиН?", options: ["До 10 000₽", "До 50 000₽", "До 500 000₽", "До 1 000 000₽"], correct: 3, explanation: "За грубые нарушения СанПиН юридическое лицо может быть оштрафовано до 1 000 000₽." },
+      { q: "За сколько дней сотрудник должен знать свой график работы?", options: ["За 3 дня", "За 1 неделю", "За 2 недели", "За 1 месяц"], correct: 2, explanation: "По ТК РФ график работы должен быть доведён до сведения сотрудника не позднее чем за 2 недели." },
+      { q: "Что такое ЕГАИС?", options: ["Единая система налогообложения", "Электронная система учёта алкоголя", "Журнал уборки", "Программа лояльности"], correct: 1, explanation: "ЕГАИС — Единая государственная автоматизированная информационная система учёта алкоголя. Обязательна для всех, кто продаёт алкоголь." }
+    ]
+  },
+  {
+    id: 10,
+    title: "Кризис-менеджмент",
+    time: "30 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">⚡</span> Антикризисный план</div>
+        <p>Кризис в ресторане — не вопрос 'если', а вопрос 'когда'. Готовность определяет, переживёте ли вы его.</p>
+        <div class="highlight">
+          <strong>Типы кризисов:</strong><br>
+          • <strong>Операционные</strong> — отключение света/воды, поломка оборудования<br>
+          • <strong>Персонал</strong> — массовая неявка, конфликт, кража<br>
+          • <strong>Продукт</strong> — отравление, брак поставки, списание<br>
+          • <strong>Репутация</strong> — негатив в соцсетях, проверка, скандал<br>
+          • <strong>Финансовые</strong> — провал выручки, рост расходов, долги
+        </div>
+        <p><strong>Антикризисный план должен включать:</strong></p>
+        <ul>
+          <li>Контакты экстренных служб (электрик, сантехник, поставщики)</li>
+          <li>Резервное оборудование (генератор, запасные лампочки, POS-терминал)</li>
+          <li>План эвакуации и инструктаж персонала</li>
+          <li>Регламент коммуникации (кто, что и кому говорит)</li>
+          <li>Финансовая подушка (резерв на 1–2 месяца операционных расходов)</li>
+        </ul>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🔥</span> Работа с негативом в соцсетях</div>
+        <p>Один негативный отзыв видят в среднем 30 потенциальных гостей. Реакция важнее самого отзыва.</p>
+        <div class="highlight">
+          <strong>Алгоритм ответа на негатив:</strong><br>
+          1. <strong>Ответить быстро</strong> — в течение 2 часов в рабочее время<br>
+          2. <strong>Поблагодарить</strong> — за обратную связь<br>
+          3. <strong>Извиниться</strong> — без оправданий и «но»<br>
+          4. <strong>Объяснить</strong> — что произошло (кратко, без деталей)<br>
+          5. <strong>Предложить решение</strong> — компенсация, приглашение снова<br>
+          6. <strong>Перевести в личку</strong> — телефон или директ для деталей
+        </div>
+        <div class="highlight highlight-danger">
+          <strong>Никогда:</strong> не спорьте с гостем публично, не обвиняйте сотрудника в ответе, не копируйте шаблонные фразы.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🚨</span> Форс-мажоры</div>
+        <p>Самые страшные сценарии требуют холодной головы и чётких действий.</p>
+        <p><strong>Подозрение на отравление:</strong></p>
+        <ul>
+          <li>Вызвать скорую помощь</li>
+          <li>Изъять образцы блюд и продуктов (заморозить)</li>
+          <li>Записать данные гостя и что он ел</li>
+          <li>Уведомить Роспотребнадзор</li>
+          <li>НЕ признавать вину до результатов экспертизы</li>
+        </ul>
+        <p><strong>Пожар:</strong></p>
+        <ul>
+          <li>Эвакуировать гостей и персонал</li>
+          <li>Вызвать 101</li>
+          <li>НЕ тушить электропожар водой</li>
+          <li>Сохранить видеозаписи с камер</li>
+        </ul>
+        <div class="highlight highlight-success">
+          <strong>Золотое правило:</strong> жизнь и здоровье гостей и сотрудников важнее любого имущества. Всегда.
+        </div>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Отключили воду в пик»</div>
+        <p>В субботу в 20:00 отключили горячую воду. В зале 30 гостей, ещё 15 броней. Что делать?</p>
+        <p><strong>Действия управляющего:</strong></p>
+        <ul>
+          <li>Немедленно звонок в управляющую компанию — сроки восстановления</li>
+          <li>Если >1 часа — предложить гостям компенсацию (десерт/кофе/скидка 20%)</li>
+          <li>Перевести кухню на холодные блюда и заготовки</li>
+          <li>Позвонить в брони — предупредить, предложить перенос</li>
+          <li>Зафиксировать всё в логе для претензии к УК</li>
+        </ul>
+        <p><strong>Результат:</strong> 80% гостей остались довольны компенсацией, негативных отзывов не было.</p>
+      </div>`,
+    checklist: [
+      "Составить антикризисный план с контактами экстренных служб",
+      "Провести инструктаж персонала по плану эвакуации",
+      "Создать финансовую подушку на 1–2 месяца",
+      "Подготовить шаблоны ответов на негативные отзывы",
+      "Проверить резервное оборудование (генератор, POS)"
+    ],
+    quiz: [
+      { q: "Как быстро нужно ответить на негативный отзыв в соцсетях?", options: ["В течение суток", "В течение 2 часов", "В течение недели", "Не отвечать — пусть уйдёт"], correct: 1, explanation: "Отвечать на негатив нужно в течение 2 часов в рабочее время. Быстрая реакция показывает заботу и снижает viral-эффект негатива." },
+      { q: "Что важнее при пожаре в ресторане?", options: ["Имущество", "Документы", "Жизнь людей", "Касса"], correct: 2, explanation: "Жизнь и здоровье гостей и сотрудников — приоритет №1. Всё остальное можно восстановить." },
+      { q: "Что делать при подозрении на отравление?", options: ["Скрыть информацию", "Вызвать скорую и изъять образцы", "Обвинить гостя", "Ничего — само пройдёт"], correct: 1, explanation: "При подозрении на отравление нужно вызвать скорую, изъять образцы блюд для экспертизы и уведомить Роспотребнадзор." },
+      { q: "Какой размер финансовой подушки рекомендуется?", options: ["1 неделя расходов", "1–2 месяца расходов", "6 месяцев расходов", "1 год расходов"], correct: 1, explanation: "Финансовая подушка в 1–2 месяца операционных расходов позволяет пережить краткосрочный кризис без паники." },
+      { q: "Что НЕЛЬЗЯ делать в публичном ответе на негатив?", options: ["Извиниться", "Предложить компенсацию", "Спорить с гостем", "Перевести в личку"], correct: 2, explanation: "Нельзя спорить с гостем публично. Это провоцирует длинную перепалку, которую видят все потенциальные гости." }
+    ]
+  },
+
+  {
+    id: 11,
+    title: "Бар и напитки",
+    time: "40 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🍷</span> Beverage Cost и барная экономика</div>
+        <p>Бар — это отдельный бизнес внутри ресторана. Управляющий должен понимать барную экономику не хуже кухни.</p>
+        <p><strong>Beverage Cost</strong> — доля стоимости напитков в выручке от их продажи:</p>
+        <div class="formula">Beverage Cost = (Себестоимость напитков ÷ Выручка от напитков) × 100%</div>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Категория</th><th>Норма Beverage Cost</th><th>Маржа</th></tr>
+            <tr><td>Пиво</td><td>18–25%</td><td>75–82%</td></tr>
+            <tr><td>Вино по бокалам</td><td>22–28%</td><td>72–78%</td></tr>
+            <tr><td>Вино по бутылкам</td><td>30–35%</td><td>65–70%</td></tr>
+            <tr><td>Крепкий алкоголь</td><td>15–20%</td><td>80–85%</td></tr>
+            <tr><td>Коктейли</td><td>18–22%</td><td>78–82%</td></tr>
+            <tr><td>Безалкогольные</td><td>10–15%</td><td>85–90%</td></tr>
+          </table>
+        </div>
+        <div class="highlight highlight-success">
+          <strong>Правило 80/20 в баре:</strong> 20% позиций дают 80% выручки. Следите за «мертвым весом» — бутылками, которые стоят месяцами и пылятся.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🍸</span> Винная карта и коктейли</div>
+        <p><strong>Винная карта</strong> — лицо ресторана. Её структура влияет на средний чек и имидж.</p>
+        <ul>
+          <li><strong>Бокалы</strong> — 3 белых, 3 красных, розовое, игристое. Цена: от доступного до премиального</li>
+          <li><strong>Бутылки</strong> — 15–25 позиций. Баланс: 40% доступные, 40% средние, 20% премиум</li>
+          <li><strong>По бокалам</strong> — маржа выше, но риск порчи (вино окисляется через 1–2 дня)</li>
+        </ul>
+        <p><strong>Коктейльная карта:</strong></p>
+        <ul>
+          <li>5–8 классических (Маргарита, Олд Фэшн, Негрони) — гарантия продаж</li>
+          <li>3–5 авторских — уникальность, повышенная маржа</li>
+          <li>Сезонные позиции — обновлять каждые 2–3 месяца</li>
+        </ul>
+        <div class="highlight">
+          <strong>Совет:</strong> обучайте официантов вину. Официант, который может рассказать о вине уверенно, продаёт его в 3 раза чаще.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📏</span> Барный инвентарь и контроль</div>
+        <p>Бар — зона повышенного риска: порча, кражи, переливы. Контроль должен быть жёстким.</p>
+        <p><strong>Ежедневный контроль:</strong></p>
+        <ul>
+          <li>Пересчёт кассы и выручки по Z-отчёту</li>
+          <li>Сверка продаж по POS с фактическим расходом алкоголя</li>
+          <li>Проверка сроков открытых бутылок (вино — 2 дня, вермут — месяц)</li>
+          <li>Контроль норм коктейлей (30/45/60 мл — стандартные порции)</li>
+        </ul>
+        <div class="highlight highlight-danger">
+          <strong>Красные флаги:</strong> Beverage Cost выше нормы, расхождение POS и фактического расхода >3%, частые «сломанные» бутылки, отсутствие чеков на комплименты.
+        </div>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Пропадает виски»</div>
+        <p>Beverage Cost по виски вырос с 18% до 28% за месяц. POS показывает 50 порций, а по факту ушло 80. Что происходит?</p>
+        <p><strong>Версии:</strong></p>
+        <ul>
+          <li>Бармен наливает двойные порции без доплаты</li>
+          <li>Комплименты не пробиваются в POS</li>
+          <li>Сливы (налили, не забрали, вылили)</li>
+          <li>Кража (бутылки уносят домой)</li>
+        </ul>
+        <p><strong>Решение:</strong> внедрить весовой контроль бутылок, видеонаблюдение за баром, обязательную фиксацию комплиментов в POS.</p>
+      </div>`,
+    checklist: [
+      "Рассчитать Beverage Cost за неделю по каждой категории",
+      "Проверить сроки открытых бутылок",
+      "Сверить продажи POS с фактическим расходом алкоголя",
+      "Провести дегустацию вина для официантов",
+      "Проверить нормы наливки коктейлей"
+    ],
+    quiz: [
+      { q: "Какая норма Beverage Cost для крепкого алкоголя?", options: ["30–35%", "25–30%", "15–20%", "5–10%"], correct: 2, explanation: "Крепкий алкоголь имеет самый низкий Beverage Cost (15–20%) и самую высокую маржу (80–85%)." },
+      { q: "Сколько дней хранится открытое вино в бутылке?", options: ["1–2 дня", "5–7 дней", "2 недели", "1 месяц"], correct: 0, explanation: "Открытое вино окисляется за 1–2 дня. Дольше — теряет вкус, гость получит плохой опыт." },
+      { q: "Что такое 'мертвый вес' в баре?", options: ["Сломанная посуда", "Бутылки, которые не продаются", "Просроченные продукты", "Неоплаченные счета"], correct: 1, explanation: "'Мёртвый вес' — бутылки, которые стоят месяцами без движения. Замораживают оборотные средства и портятся." },
+      { q: "Какой порции коктейля является стандартной?", options: ["15 мл", "30/45/60 мл", "100 мл", "150 мл"], correct: 1, explanation: "Стандартные порции крепкого в коктейле: 30 мл (1 oz), 45 мл (1.5 oz), 60 мл (2 oz). Зависит от рецептуры и цены." },
+      { q: "Какой расход алкоголя считается критичным?", options: ["Разница POS и факта >1%", "Разница POS и факта >3%", "Разница POS и факта >10%", "Любая разница"], correct: 1, explanation: "Разница между POS и фактическим расходом >3% — тревожный сигнал. Требуется расследование: сливы, кражи, ошибки наливки." }
+    ]
+  },
+  {
+    id: 12,
+    title: "Меню-инжиниринг и ценообразование",
+    time: "50 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📐</span> Конструирование меню</div>
+        <p>Меню — это не список блюд. Это инструмент продаж, который влияет на выбор гостя до того, как он откроет рот.</p>
+        <p><strong>Принципы дизайна меню:</strong></p>
+        <ul>
+          <li><strong>Золотой треугольник</strong> — глаз движется: центр → правый верх → левый верх. Туда ставьте звёзды и головоломки</li>
+          <li><strong>Якорные цены</strong> — 2–3 дорогих блюда делают остальные доступными</li>
+          <li><strong>Без знака валюты</strong> — цифры без ₽ воспринимаются как меньшие</li>
+          <li><strong>Описания</strong> — «томлёная говядина 12 часов» продаётся лучше, чем «говяжьи щёчки»</li>
+          <li><strong>Фото</strong> — 1–2 фото на разворот повышают продажи этих позиций на 30%</li>
+        </ul>
+        <div class="highlight">
+          <strong>Матрица BCG в меню:</strong><br>
+          • ⭐ <strong>Звёзды</strong> — высокая маржа + высокие продажи. Главные драйверы.<br>
+          • 🐴 <strong>Лошади</strong> — низкая маржа + высокие продажи. Привлекают, но мало зарабатывают.<br>
+          • 🧩 <strong>Головоломки</strong> — высокая маржа + низкие продажи. Нужно продвигать.<br>
+          • 🐕 <strong>Собаки</strong> — низкая маржа + низкие продажи. Убрать или пересмотреть.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">💲</span> Стратегии ценообразования</div>
+        <p>Цена — это не себестоимость × 3. Цена — это восприятие ценности гостем.</p>
+        <p><strong>Модели ценообразования:</strong></p>
+        <ul>
+          <li><strong>Cost-plus</strong> — себестоимость + наценка. Просто, но игнорирует спрос.</li>
+          <li><strong>Value-based</strong> — цена основана на ценности для гостя. Стейк из мраморной говядины может стоить в 5 раз дороже обычного.</li>
+          <li><strong>Competitive</strong> — ориентация на цены конкурентов. Опасно: гонка на дно.</li>
+          <li><strong>Psychological</strong> — 599₽ вместо 600₽, 990₽ вместо 1000₽. Работает.</li>
+        </ul>
+        <div class="formula">Наценка = (Розничная цена − Себестоимость) ÷ Себестоимость × 100%</div>
+        <div class="highlight highlight-success">
+          <strong>Совет:</strong> никогда не округляйте цены до «красивых» 500/1000. 490, 590, 790 — работают лучше, потому что воспринимаются как «400+, 500+, 700+», а не «500, 600, 800».
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🔄</span> Сезонность и обновление меню</div>
+        <p>Меню должно жить. Статичное меню = падающие продажи через 6 месяцев.</p>
+        <p><strong>Частота обновления:</strong></p>
+        <ul>
+          <li><strong>Ежемесячно:</strong> 1–2 сезонных блюда (спаржа весной, трюфели осенью)</li>
+          <li><strong>Ежеквартально:</strong> обновление 15–20% меню, уход «собак»</li>
+          <li><strong>Ежегодно:</strong> полный пересмотр концепции, цен, дизайна</li>
+        </ul>
+        <p><strong>Анализ перед обновлением:</strong></p>
+        <ul>
+          <li>Отчёт по продажам за 3 месяца (количество, выручка, маржа)</li>
+          <li>Отзывы гостей (что хвалят, что критикуют)</li>
+          <li>Сезонность продуктов (цена, качество, доступность)</li>
+          <li>Тренды (что популярно сейчас: растительное, ферментация, zero waste)</li>
+        </ul>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Почему не продаётся десерт?»</div>
+        <p>Тирамису — флагманский десерт шефа. Себестоимость 80₽, цена 450₽ (маржа 82%). Продаётся 3 порции в день. Почему?</p>
+        <p><strong>Анализ:</strong></p>
+        <ul>
+          <li>В меню — в самом низу, без фото, без описания</li>
+          <li>Официанты не предлагают (не пробовали, не знают, что продавать)</li>
+          <li>Цена 450₽ — выше среднего по рынку, но гость не понимает, почему</li>
+          <li>Нет триггеров: «домашний», «авторский рецепт шефа», «с маскарпоне из Италии»</li>
+        </ul>
+        <p><strong>Решение:</strong> поднять в меню, добавить фото, обучить официантов, изменить название на «Тирамису по рецепту шефа Андреа».</p>
+      </div>`,
+    checklist: [
+      "Провести анализ меню по матрице BCG (звёзды/лошади/головоломки/собаки)",
+      "Проверить расположение ТОП-позиций в золотом треугольнике меню",
+      "Рассчитать наценку на каждое блюдо",
+      "Обновить 2 сезонных позиции",
+      "Провести обучение официантов по новым позициям"
+    ],
+    quiz: [
+      { q: "Как называется зона меню, на которую гость смотрит в первую очередь?", options: ["Серебряный квадрат", "Золотой треугольник", "Бриллиантовая зона", "Центральная ось"], correct: 1, explanation: "Золотой треугольник — центр → правый верх → левый верх. Туда ставят самые маржинальные и популярные позиции." },
+      { q: "Какая модель ценообразования ориентируется на ценность для гостя?", options: ["Cost-plus", "Value-based", "Competitive", "Psychological"], correct: 1, explanation: "Value-based pricing — цена основана на воспринимаемой ценности для гостя, а не на себестоимости." },
+      { q: "Как часто рекомендуется полностью пересматривать меню?", options: ["Каждый месяц", "Каждый квартал", "Раз в год", "Раз в 3 года"], correct: 2, explanation: "Полный пересмотр меню рекомендуется раз в год. Ежеквартально — обновление 15–20% позиций." },
+      { q: "Какая цена воспринимается психологически как '400 с чем-то'?", options: ["400₽", "450₽", "499₽", "500₽"], correct: 2, explanation: "499₽ воспринимается как '400+', а 500₽ — как '500'. Это psychological pricing, проверенный приём." },
+      { q: "Что делать с 'собаками' в меню?", options: ["Продвигать активно", "Убрать или пересмотреть", "Понизить цену", "Увеличить порцию"], correct: 1, explanation: "'Собаки' — низкая маржа + низкие продажи. Их нужно убрать из меню или полностью пересмотреть рецептуру/цену." }
+    ]
+  },
+
+  {
+    id: 13,
+    title: "Управление конфликтами и коммуникация",
+    time: "45 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🗣️</span> Коммуникация в ресторане</div>
+        <p>Управляющий проводит 80% времени в общении: с гостями, сотрудниками, поставщиками, проверяющими. Качество коммуникации = качество управления.</p>
+        <p><strong>Типы коммуникации:</strong></p>
+        <ul>
+          <li><strong>Вертикальная</strong> — сверху вниз (приказы, инструкции) и снизу вверх (обратная связь, жалобы)</li>
+          <li><strong>Горизонтальная</strong> — между отделами (кухня ↔ зал, склад ↔ кухня)</li>
+          <li><strong>Внешняя</strong> — с гостями, поставщиками, контролирующими органами</li>
+        </ul>
+        <div class="highlight">
+          <strong>Золотое правило:</strong> информация должна дойти до адресата такой, какой была задумана. Если повар не понял задачу — это вина того, кто её поставил, а не повара.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">⚡</span> Управление конфликтами</div>
+        <p>Конфликт — не катастрофа. Неуправляемый конфликт — катастрофа.</p>
+        <p><strong>Стили поведения в конфликте:</strong></p>
+        <ul>
+          <li><strong>Конкуренция</strong> — «я прав, и точка». Работает в кризисе, разрушает отношения.</li>
+          <li><strong>Сотрудничество</strong> — ищем решение, удовлетворяющее всех. Идеально, но требует времени.</li>
+          <li><strong>Компромисс</strong> — каждый уступает немного. Быстро, но никто не полностью доволен.</li>
+          <li><strong>Избегание</strong> — «пусть само рассосётся». Проблема накапливается.</li>
+          <li><strong>Приспособление</strong> — «как скажешь». Сохраняет отношения, но авторитет падает.</li>
+        </ul>
+        <div class="highlight highlight-success">
+          <strong>Для управляющего:</strong> сотрудничество — стиль по умолчанию. Конкуренция — только в операционном кризисе (пожар, отравление). Избегание — недопустимо.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🎯</span> Обратная связь: техника SBI</div>
+        <p>Обратная связь — главный инструмент развития сотрудников. Но «ты плохо работаешь» — это не обратная связь, это оскорбление.</p>
+        <div class="highlight">
+          <strong>SBI — Situation, Behavior, Impact:</strong><br>
+          <strong>S</strong>ituation — «Вчера во время пика, в 20:00...»<br>
+          <strong>B</strong>ehavior — «...ты не вышел на линию вовремя, хотя был в смене.»<br>
+          <strong>I</strong>mpact — «...из-за этого время подачи выросло до 35 минут, и 2 столика ушли.»<br><br>
+          <strong>+ Request:</strong> «В следующий раз, если задерживаешься, предупреди за 30 минут.»
+        </div>
+        <p><strong>Правила обратной связи:</strong></p>
+        <ul>
+          <li>Давать сразу, не откладывать на «потом»</li>
+          <li>1-to-1 — в приватной обстановке, не на людях</li>
+          <li>3 к 1: на 1 замечание — 3 похвалы (по научным данным, это оптимальное соотношение)</li>
+          <li>Фокус на поведении, а не на личности («ты опоздал», а не «ты безответственный»)</li>
+        </ul>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Конфликт на линии»</div>
+        <p>Повар и официант поссорились на кухне при гостях. Повар кричит, что официант несёт холодные блюда. Официант кричит, что повар готовит 40 минут. Гости слышат. Что делать управляющему?</div>
+        <p><strong>Немедленно:</strong></p>
+        <ul>
+          <li>Развести стороны — официанта в зал, повара с линии</li>
+          <li>Извиниться перед гостями, компенсировать (десерт/скидка)</li>
+          <li>Назначить замену на линию, если нужно</li>
+        </ul>
+        <p><strong>После смены:</strong></p>
+        <ul>
+          <li>Разобрать индивидуально с каждым (SBI)</li>
+          <li>Найти причину: нехватка персонала? Непонятные стандарты? Личная неприязнь?</li>
+          <li>Если личный конфликт — развести на разные смены на 2 недели</li>
+        </ul>
+      </div>`,
+    checklist: [
+      "Провести 1-to-1 с каждым сотрудником этой недели",
+      "Дать обратную связь по технике SBI",
+      "Соотношение похвал и замечаний — 3:1",
+      "Разобрать конфликт, если был, в течение 24 часов",
+      "Проверить, все ли задачи доходят до исполнителей корректно"
+    ],
+    quiz: [
+      { q: "Какой стиль поведения в конфликте рекомендуется управляющему по умолчанию?", options: ["Конкуренция", "Сотрудничество", "Избегание", "Приспособление"], correct: 1, explanation: "Сотрудничество — ищем решение, удовлетворяющее всех стороны. Это стиль по умолчанию для управляющего. Конкуренция — только в кризисе." },
+      { q: "Что означает буква B в технике SBI?", options: ["Background", "Behavior (поведение)", "Belief (убеждение)", "Benefit (выгода)"], correct: 1, explanation: "SBI = Situation (ситуация), Behavior (поведение), Impact (влияние). B — конкретное поведение, которое нужно изменить или похвалить." },
+      { q: "Какое оптимальное соотношение похвал и замечаний?", options: ["1:1", "2:1", "3:1", "5:1"], correct: 2, explanation: "Научные исследования показывают: оптимальное соотношение 3 похвалы на 1 замечание. Это мотивирует и не деморализует." },
+      { q: "Где давать обратную связь сотруднику?", options: ["На общем собрании", "В приватной обстановке (1-to-1)", "В зале при гостях", "В групповом чате"], correct: 1, explanation: "Обратная связь, особенно негативная, даётся в приватной обстановке (1-to-1). Публичная критика уничтожает доверие." },
+      { q: "Что делать управляющему при конфликте на линии при гостях?", options: ["Поддержать повара", "Поддержать официанта", "Развести стороны и извиниться перед гостями", "Наблюдать со стороны"], correct: 2, explanation: "Приоритет — гости. Нужно немедленно развести стороны, восстановить сервис и извиниться перед гостями с компенсацией. Разбор — после смены." }
+    ]
+  },
+  {
+    id: 14,
+    title: "Ресторанная аналитика и отчётность",
+    time: "45 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📊</span> Ежедневные отчёты</div>
+        <p>Управляющий начинает и заканчивает день с цифрами. Вот отчёты, которые нужно смотреть ежедневно:</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Отчёт</th><th>Что показывает</th><th>Норма/цель</th></tr>
+            <tr><td>Z-отчёт / X-отчёт</td><td>Выручка, количество чеков, средний чек</td><td>Рост к прошлой неделе</td></tr>
+            <tr><td>Отчёт по блюдам</td><td>Что продали, сколько, в какие часы</td><td>ТОП-10 и аутсайдеры</td></tr>
+            <tr><td>Отчёт по списаниям</td><td>Почему и сколько списали</td><td><1% от выручки</td></tr>
+            <tr><td>Отчёт по сменам</td><td>Выручка по каждому официанту</td><td>Средний чек по сотруднику</td></tr>
+            <tr><td>Кассовый отчёт</td><td>Сверка наличных с POS</td><td>Расхождение = 0</td></tr>
+          </table>
+        </div>
+        <div class="highlight">
+          <strong>Время на отчёты:</strong> 20–30 минут утром (анализ вчера) + 10 минут вечером (итоги смены). Это инвестиция, которая предотвращает проблемы.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📈</span> Еженедельные и ежемесячные отчёты</div>
+        <p><strong>Еженедельно (каждый понедельник):</strong></p>
+        <ul>
+          <li>Сравнение выручки с прошлой неделей и аналогичной неделей прошлого года</li>
+          <li>Food Cost и Beverage Cost за неделю</li>
+          <li>Labor Cost — факт vs план</li>
+          <li>ТОП-5 жалоб и компенсаций</li>
+          <li>Текучка кадров — кто ушёл, кто пришёл</li>
+        </ul>
+        <p><strong>Ежемесячно:</strong></p>
+        <ul>
+          <li>Полный P&L (прибыль и убытки)</li>
+          <li>ABC-анализ меню и склада</li>
+          <li>Анализ маркетинговых активностей (ROI)</li>
+          <li>Сравнение с конкурентами (цены, меню, акции)</li>
+          <li>План на следующий месяц</li>
+        </ul>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🔧</span> POS-системы и автоматизация</div>
+        <p>POS (Point of Sale) — сердце ресторана. От него зависит скорость обслуживания, точность учёта и качество аналитики.</p>
+        <p><strong>Популярные системы в России:</strong></p>
+        <ul>
+          <li><strong>iiko</strong> — лидер рынка. Мощная аналитика, интеграция с доставкой, склад</li>
+          <li><strong>R-Keeper</strong> — классика, надёжность, хорош для сетей</li>
+          <li><strong>1С:Ресторан</strong> — для небольших заведений, дешевле</li>
+          <li><strong>МойСклад / Poster</strong> — для малого бизнеса, простые</li>
+        </ul>
+        <div class="highlight highlight-success">
+          <strong>Что должно быть в POS:</strong> разделение прав (официант не может удалить чек), интеграция с кухней (KDS — Kitchen Display System), учёт ингредиентов, отчёты в реальном времени.
+        </div>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Цифры не сходятся»</div>
+        <p>Ежедневный отчёт: выручка по POS = 85 000₽, но в кассе 84 200₽. Разница 800₽. Вчера было то же самое — 750₽. Что проверять?</p>
+        <p><strong>Проверки:</strong></p>
+        <ul>
+          <li>Не пробитые комплименты (официант принёс кофе «от заведения», но не внёс в POS)</li>
+          <li>Скидки без разрешения (персональная скидка официанта друзьям)</li>
+          <li>Ошибка при закрытии кассы (неправильный подсчёт)</li>
+          <li>Мелкие кражи (не пробитый чай/кофе, деньги в карман)</li>
+        </ul>
+        <p><strong>Решение:</strong> внедрить правило — любая компенсация/комплимент фиксируется в POS с указанием причины и подписью управляющего.</p>
+      </div>`,
+    checklist: [
+      "Смотреть Z-отчёт каждое утро",
+      "Анализировать ТОП-10 продаж и аутсайдеров",
+      "Сверять кассу с POS ежедневно",
+      "Готовить еженедельный отчёт по Food/Beverage/Labor Cost",
+      "Проверять, что все комплименты пробиты в POS"
+    ],
+    quiz: [
+      { q: "Какой отчёт показывает выручку, количество чеков и средний чек за смену?", options: ["ABC-анализ", "Z-отчёт", "Инвентаризация", "P&L"], correct: 1, explanation: "Z-отчёт — итоговый отчёт кассового аппарата за смену. Показывает выручку, количество чеков, средний чек, НДС." },
+      { q: "Как часто нужно смотреть полный P&L?", options: ["Ежедневно", "Еженедельно", "Ежемесячно", "Ежегодно"], correct: 2, explanation: "Полный P&L анализируется ежемесячно. Ежедневно — Z-отчёты, еженедельно — Food Cost, Labor Cost, динамика выручки." },
+      { q: "Что такое KDS?", options: ["Кухонный дисплей (Kitchen Display System)", "Кассовая система", "Программа лояльности", "Система учёта алкоголя"], correct: 0, explanation: "KDS = Kitchen Display System — экран на кухне, куда приходят заказы из POS. Заменяет бумажные чеки, ускоряет работу." },
+      { q: "Какая норма списаний от выручки?", options: ["<5%", "<3%", "<1%", "<10%"], correct: 2, explanation: "Норма списаний — менее 1% от выручки. Больше — сигнал проблем: порча, кражи, ошибки закупок." },
+      { q: "Что делать, если касса не сходится с POS 2 дня подряд?", options: ["Игнорировать", "Уволить кассира", "Расследовать причины и внедрить контроль", "Списать на ошибку"], correct: 2, explanation: "Два дня расхождения — тренд, требующий расследования. Нужно проверить комплименты, скидки, ошибки подсчёта, возможные кражи." }
+    ]
+  },
+  {
+    id: 15,
+    title: "Планирование и бюджетирование",
+    time: "40 мин",
+    theory: `<div class="card fade-in">
+        <div class="card-title"><span class="card-icon">📅</span> Годовой бюджет ресторана</div>
+        <p>Бюджет — это план в цифрах. Без бюджета ресторан управляется на ощупь.</p>
+        <p><strong>Структура годового бюджета:</strong></p>
+        <ul>
+          <li><strong>Доходы:</strong> выручка по месяцам с учётом сезонности</li>
+          <li><strong>Переменные расходы:</strong> продукты, напитки, упаковка, комиссия банка</li>
+          <li><strong>Постоянные расходы:</strong> аренда, зарплаты администрации, коммуналка, страховка</li>
+          <li><strong>Инвестиции:</strong> оборудование, ремонт, обучение, маркетинг</li>
+          <li><strong>Резерв:</strong> 5–10% на непредвиденные расходы</li>
+        </ul>
+        <div class="formula">Бюджет = Σ(Плановая выручка) − Σ(Все расходы) − Резерв = Плановая прибыль</div>
+        <div class="highlight">
+          <strong>Сезонность:</strong> в России ресторанный бизнес имеет пики (декабрь, лето для веранд) и спады (январь, февраль). Бюджет должен это учитывать.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">🔮</span> Прогнозирование выручки</div>
+        <p>Прогноз — не гадание. Это математика на основе данных.</p>
+        <p><strong>Методы прогноза:</strong></p>
+        <ul>
+          <li><strong>На основе истории</strong> — прошлый год + рост/падение X%</li>
+          <li><strong>На основе мест</strong> — посадочные места × оборачиваемость × средний чек × дни</li>
+          <li><strong>На основе броней</strong> — подтверждённые брони + коэффициент walk-in</li>
+        </ul>
+        <div class="formula">Прогноз выручки = Места × Оборачиваемость × Средний чек × Дни работы</div>
+        <p><strong>Пример:</strong> 40 мест, оборачиваемость 2.5, средний чек 1200₽, 30 дней.</p>
+        <p>Прогноз = 40 × 2.5 × 1200 × 30 = <strong>3 600 000₽/мес</strong></p>
+        <div class="highlight highlight-success">
+          <strong>Совет:</strong> делайте 3 сценария — оптимистичный, реалистичный, пессимистичный. Планируйте по реалистичному, готовьтесь к пессимистичному.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="card-icon">💧</span> Управление денежным потоком (Cash Flow)</div>
+        <p>Прибыль ≠ деньги в кассе. Ресторан может быть прибыльным, но обанкротиться из-за нехватки наличности.</p>
+        <p><strong>Cash Flow = Поступления − Выплаты</strong></p>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Поступления</th><th>Выплаты</th></tr>
+            <tr><td>Выручка наличными</td><td>Зарплата (2 раза в месяц)</td></tr>
+            <tr><td>Выручка картой (за вычетом комиссии)</td><td>Аренда (1 раз в месяц)</td></tr>
+            <tr><td>Предоплаты, депозиты</td><td>Поставщики (1–2 раза в неделю)</td></tr>
+            <tr><td>Инвестиции, кредиты</td><td>Налоги, коммуналка</td></tr>
+          </table>
+        </div>
+        <div class="highlight highlight-danger">
+          <strong>Критично:</strong> если в день выплаты зарплаты на счету недостаточно денег — проблема. Нужен платёжный календарь: когда и сколько должно уйти.
+        </div>
+      </div>
+      <div class="case-box fade-in">
+        <div class="case-title">🎯 Кейс: «Прибыль есть, денег нет»</div>
+        <p>Ресторан показывает прибыль 200 000₽/мес по P&L, но управляющий не может заплатить поставщикам. Как так?</p>
+        <p><strong>Анализ:</strong></p>
+        <ul>
+          <li>80% выручки — безналичные платежи, которые приходят на счёт через 3–5 дней</li>
+          <li>Поставщики требуют оплату сразу после поставки</li>
+          <li>Аренда — авансом за квартал (заморожено 900 000₽)</li>
+          <li>Зарплата — 2 раза в месяц, совпадает с низким Cash Flow</li>
+        </ul>
+        <p><strong>Решение:</strong> договориться с поставщиками об отсрочке 7–14 дней, перейти на помесячную аренду, создать кредитную линию на случай кассовых разрывов.</p>
+      </div>`,
+    checklist: [
+      "Составить годовой бюджет с учётом сезонности",
+      "Сделать 3 сценария прогноза выручки (оптимистичный, реалистичный, пессимистичный)",
+      "Создать платёжный календарь на месяц",
+      "Проверить Cash Flow на предмет кассовых разрывов",
+      "Заложить резерв 5–10% на непредвиденные расходы"
+    ],
+    quiz: [
+      { q: "Что такое Cash Flow?", options: ["Прибыль за месяц", "Разница между поступлениями и выплатами", "Сумма всех расходов", "Выручка минус налоги"], correct: 1, explanation: "Cash Flow = поступления денег − выплаты денег. Ресторан может быть прибыльным, но иметь отрицательный Cash Flow и обанкротиться." },
+      { q: "Какой резерв рекомендуется закладывать в бюджет?", options: ["1–2%", "5–10%", "20–30%", "50%"], correct: 1, explanation: "Резерв 5–10% на непредвиденные расходы — стандартная практика. Покрывает форс-мажоры без кризиса." },
+      { q: "Сколько сценариев прогноза выручки рекомендуется делать?", options: ["1", "2", "3", "5"], correct: 2, explanation: "Три сценария: оптимистичный, реалистичный, пессимистичный. Планируем по реалистичному, готовимся к пессимистичному." },
+      { q: "Почему прибыльный ресторан может не иметь денег для выплат?", options: ["Плохая кухня", "Нехватка персонала", "Отрицательный Cash Flow", "Низкие цены"], correct: 2, explanation: "Прибыль (P&L) и наличные деньги (Cash Flow) — разные вещи. Деньги могут быть 'заморожены' в запасах, авансах, дебиторской задолженности." },
+      { q: "Какая формула прогноза выручки через посадочные места?", options: ["Места × Средний чек", "Места × Оборачиваемость × Средний чек × Дни", "Средний чек × Количество гостей", "Выручка прошлого года + 10%"], correct: 1, explanation: "Прогноз = Места × Оборачиваемость × Средний чек × Дни работы. Это базовая формула для нового или перепрофилируемого ресторана." }
+    ]
+  }
+];
+];
+
+// ===================== STATE =====================
+let currentModule = 0;
+let currentTab = 'theory';
+let quizState = {};
+let checklistState = {};
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem('managerBookState') || '{}');
+    currentModule = s.currentModule || 0;
+    quizState = s.quizState || {};
+    checklistState = s.checklistState || {};
+  } catch(e) {}
+}
+
+function saveState() {
+  localStorage.setItem('managerBookState', JSON.stringify({
+    currentModule, quizState, checklistState
+  }));
+}
+
+// ===================== NAVIGATION =====================
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.querySelector('.sidebar-overlay').classList.toggle('open');
+}
+
+function toggleSearch() {
+  document.getElementById('searchOverlay').classList.toggle('open');
+  if (document.getElementById('searchOverlay').classList.contains('open')) {
+    setTimeout(() => document.getElementById('searchInput').focus(), 100);
+  }
+}
+
+function renderNav() {
+  const nav = document.getElementById('navList');
+  nav.innerHTML = modules.map((m, i) => {
+    const done = isModuleDone(m.id);
+    return `<div class="nav-item ${i === currentModule ? 'active' : ''}" onclick="goToModule(${i})">
+      <div class="nav-num">${m.id}</div>
+      <div class="nav-text">${m.title}</div>
+      <div class="nav-check ${done ? 'done' : ''}">${done ? '✓' : ''}</div>
+    </div>`;
+  }).join('');
+
+  // Progress
+  const doneCount = modules.filter(m => isModuleDone(m.id)).length;
+  const pct = Math.round((doneCount / modules.length) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = pct + '% пройдено (' + doneCount + '/' + modules.length + ')';
+}
+
+function isModuleDone(mid) {
+  const m = modules.find(x => x.id === mid);
+  if (!m) return false;
+  const q = quizState[mid] || {};
+  const quizDone = Object.keys(q).length >= m.quiz.length && Object.values(q).every(v => v !== undefined);
+  const c = checklistState[mid] || [];
+  const checkDone = c.filter(Boolean).length >= m.checklist.length;
+  return quizDone && checkDone;
+}
+
+function goToModule(i) {
+  currentModule = i;
+  currentTab = 'theory';
+  saveState();
+  renderModule();
+  renderNav();
+  toggleSidebar();
+  window.scrollTo(0, 0);
+}
+
+function prevModule() {
+  if (currentModule > 0) goToModule(currentModule - 1);
+}
+
+function nextModule() {
+  if (currentModule < modules.length - 1) goToModule(currentModule + 1);
+}
+
+// ===================== MODULE RENDERING =====================
+function renderModule() {
+  const m = modules[currentModule];
+  const main = document.getElementById('main');
+  document.getElementById('footerCounter').textContent = (currentModule + 1) + ' / ' + modules.length;
+  document.getElementById('btnPrev').disabled = currentModule === 0;
+  document.getElementById('btnNext').disabled = currentModule === modules.length - 1;
+
+  let content = `
+    <div class="module-header fade-in">
+      <div class="module-num">Модуль ${m.id}</div>
+      <div class="module-title">${m.title}</div>
+      <div class="module-time">⏱ ${m.time} &nbsp;|&nbsp; 
+        <span class="tag tag-theory">Теория</span>
+        <span class="tag tag-practice">Практика</span>
+        <span class="tag tag-test">Тест</span>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${currentTab === 'theory' ? 'active' : ''}" onclick="switchTab('theory')">📖 Теория</div>
+      <div class="tab ${currentTab === 'checklist' ? 'active' : ''}" onclick="switchTab('checklist')">✅ Чек-лист</div>
+      <div class="tab ${currentTab === 'quiz' ? 'active' : ''}" onclick="switchTab('quiz')">🧩 Тест</div>
+    </div>
+  `;
+
+  if (currentTab === 'theory') {
+    content += wrapTerms(m.theory);
+  } else if (currentTab === 'checklist') {
+    content += renderChecklist(m);
+  } else {
+    content += renderQuiz(m);
+  }
+
+  main.innerHTML = content;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  saveState();
+  renderModule();
+}
+
+// ===================== CHECKLIST =====================
+function renderChecklist(m) {
+  const checks = checklistState[m.id] || [];
+  let html = '<div class="card fade-in"><div class="card-title"><span class="card-icon">✅</span> Практический чек-лист</div>';
+  html += '<p>Отметьте пункты, которые вы уже освоили или выполнили:</p>';
+  m.checklist.forEach((item, i) => {
+    const done = checks[i] || false;
+    html += `<div class="checklist-item" onclick="toggleCheck(${m.id}, ${i})">
+      <div class="check-box ${done ? 'checked' : ''}">${done ? '✓' : ''}</div>
+      <div class="check-text ${done ? 'done' : ''}">${item}</div>
+    </div>`;
+  });
+  const doneCount = checks.filter(Boolean).length;
+  html += `<div style="margin-top:14px;font-size:0.85rem;color:var(--text-dim);">Выполнено: ${doneCount} из ${m.checklist.length}</div>`;
+  html += '</div>';
+  return html;
+}
+
+function toggleCheck(mid, idx) {
+  if (!checklistState[mid]) checklistState[mid] = [];
+  checklistState[mid][idx] = !checklistState[mid][idx];
+  saveState();
+  renderModule();
+  renderNav();
+}
+
+// ===================== QUIZ =====================
+function renderQuiz(m) {
+  const qState = quizState[m.id] || {};
+  let html = '<div class="card fade-in"><div class="card-title"><span class="card-icon">🧩</span> Проверочный тест</div>';
+  html += '<p>Ответьте на все вопросы, чтобы закрепить материал:</p></div>';
+
+  let correctCount = 0;
+  m.quiz.forEach((q, qi) => {
+    const answered = qState[qi];
+    const isCorrect = answered === q.correct;
+    if (isCorrect) correctCount++;
+
+    html += `<div class="card fade-in" style="margin-top:12px;">`;
+    html += `<div class="quiz-question">${qi + 1}. ${q.q}</div>`;
+    html += `<div class="quiz-options">`;
+    q.options.forEach((opt, oi) => {
+      let cls = '';
+      if (answered !== undefined) {
+        if (oi === q.correct) cls = 'correct';
+        else if (oi === answered && oi !== q.correct) cls = 'wrong';
+      } else if (answered === oi) {
+        cls = 'selected';
+      }
+      html += `<div class="quiz-option ${cls}" onclick="answerQuiz(${m.id}, ${qi}, ${oi})">
+        <div class="opt-letter">${String.fromCharCode(65 + oi)}</div>
+        <div>${opt}</div>
+      </div>`;
+    });
+    html += `</div>`;
+    if (answered !== undefined) {
+      html += `<div class="quiz-explanation show">${q.explanation}</div>`;
+    }
+    html += `</div>`;
+  });
+
+  // Result summary
+  if (Object.keys(qState).length >= m.quiz.length) {
+    const pct = Math.round((correctCount / m.quiz.length) * 100);
+    let msg = '';
+    if (pct >= 80) msg = 'Отлично! Вы хорошо усвоили материал.';
+    else if (pct >= 60) msg = 'Хорошо, но есть над чем поработать.';
+    else msg = 'Рекомендуем перечитать теорию и пройти тест снова.';
+
+    html += `<div class="card fade-in" style="margin-top:16px;">
+      <div class="quiz-result">
+        <div class="quiz-result-score">${pct}%</div>
+        <div class="quiz-result-text">${correctCount} из ${m.quiz.length} правильных ответов</div>
+        <div style="margin-top:8px;font-size:0.85rem;color:var(--text-dim);">${msg}</div>
+        <button class="btn" style="margin-top:16px;" onclick="resetQuiz(${m.id})">🔄 Пройти снова</button>
+      </div>
+    </div>`;
+  }
+
+  return html;
+}
+
+function answerQuiz(mid, qi, oi) {
+  if (!quizState[mid]) quizState[mid] = {};
+  if (quizState[mid][qi] !== undefined) return; // already answered
+  quizState[mid][qi] = oi;
+  saveState();
+  renderModule();
+  renderNav();
+}
+
+function resetQuiz(mid) {
+  quizState[mid] = {};
+  saveState();
+  renderModule();
+  renderNav();
+}
+
+// ===================== SEARCH =====================
+function doSearch() {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  const results = document.getElementById('searchResults');
+  if (!query) { results.innerHTML = ''; return; }
+
+  let hits = [];
+  modules.forEach((m, mi) => {
+    // Search in title
+    if (m.title.toLowerCase().includes(query)) {
+      hits.push({ module: mi, title: m.title, snippet: 'Модуль ' + m.id, type: 'title' });
+    }
+    // Search in theory (strip HTML)
+    const text = m.theory.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+    if (text.includes(query)) {
+      const idx = text.indexOf(query);
+      const snippet = text.substring(Math.max(0, idx - 40), idx + query.length + 40);
+      hits.push({ module: mi, title: m.title, snippet: '...' + snippet + '...', type: 'content' });
+    }
+    // Search in quiz
+    m.quiz.forEach((q, qi) => {
+      if (q.q.toLowerCase().includes(query) || q.explanation.toLowerCase().includes(query)) {
+        hits.push({ module: mi, title: m.title + ' — Тест', snippet: q.q, type: 'quiz' });
+      }
+    });
+  });
+
+  results.innerHTML = hits.slice(0, 15).map(h => `
+    <div class="search-result-item" onclick="goToModule(${h.module}); toggleSearch();">
+      <div class="search-result-title">${h.title}</div>
+      <div class="search-result-snippet">${h.snippet}</div>
+    </div>
+  `).join('');
+
+  if (hits.length === 0) {
+    results.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:40px;">Ничего не найдено</div>';
+  }
+}
+
+
+// Register Service Worker for offline
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ===================== TOOLTIPS =====================
+const termDict = {
+  "P&L": "Отчёт о прибылях и убытках. Показывает, сколько ресторан заработал и потратил за период.",
+  "Food Cost": "Доля стоимости продуктов в выручке от продажи еды. Норма для ресторана: 25–35%.",
+  "FTE": "Full Time Equivalent — эквивалент полной занятости (40 часов в неделю). Используется для расчёта необходимого штата.",
+  "EBITDA": "Прибыль до вычета процентов, налогов и амортизации. Норма для ресторана: 10–20%.",
+  "COGS": "Cost of Goods Sold — себестоимость проданных товаров (продукты и напитки).",
+  "RevPASH": "Revenue Per Available Seat Hour — выручка на одно посадочное место в один час работы.",
+  "Prime Cost": "Сумма Food Cost (продукты) и Labor Cost (зарплаты). Два крупнейших расхода ресторана. Норма: ≤60% выручки.",
+  "Seat Turnover": "Оборачиваемость посадочных мест. Сколько раз за смену одно место обслужило разных гостей.",
+  "NPS": "Net Promoter Score — индекс лояльности клиентов. Опрос: 'Оцените готовность порекомендовать нас от 0 до 10'.",
+  "HACCP": "Hazard Analysis and Critical Control Points — система анализа рисков и контроля критических точек на производстве.",
+  "ХАССП": "То же, что HACCP — система анализа рисков и контроля критических точек на пищевом производстве.",
+  "FIFO": "First In, First Out — 'первым пришёл, первым ушёл'. Продукты, прибывшие раньше, используются первыми.",
+  "FEFO": "First Expired, First Out — 'первым истекает срок, первым ушёл'. Приоритет у продуктов с более ранним сроком годности.",
+  "ABC-анализ": "Классификация товаров по значимости: А — 20% позиций дают 80% выручки; Б — 30%/15%; В — 50%/5%.",
+  "XYZ-анализ": "Классификация по предсказуемости спроса: X — стабильный спрос, Y — сезонный, Z — случайный.",
+  "Mise en place": "Французский термин: 'всё на своих местах'. Подготовка всех ингредиентов и инструментов перед началом работы.",
+  "HEARD": "Техника работы с жалобами: Hear (выслушать), Empathize (сочувствовать), Apologize (извиниться), Resolve (решить), Diagnose (разобраться).",
+  "Апселл": "Upsell — предложение более дорогой или премиальной версии товара (стейк Prime вместо Choice).",
+  "Upsell": "Предложение более дорогой или премиальной версии товара.",
+  "Cross-sell": "Продажа сопутствующего товара: вино к стейку, кофе к десерту, соус к блюду.",
+  "ROI": "Return on Investment — возврат инвестиций. Показывает, окупились ли вложения в маркетинг или оборудование.",
+  "УТП": "Уникальное торговое предложение. Ответ на вопрос: 'почему гость должен прийти именно к нам, а не к конкуренту?'",
+  "ЕГАИС": "Единая государственная автоматизированная информационная система учёта алкоголя. Обязательна для всех, кто продаёт алкоголь.",
+  "BEP": "Break-Even Point — точка безубыточности. Минимальная выручка, при которой ресторан покрывает все расходы, но ещё не зарабатывает.",
+  "Brutto": "Вес продукта до очистки, обработки и уборки отходов. Используется для закупок и складского учёта.",
+  "Netto": "Вес продукта после очистки и обработки (готовый к использованию). Используется в техкартах для расчёта норм расхода.",
+  "KPI": "Key Performance Indicator — ключевой показатель эффективности. Цифра, по которой понятно, хорошо ли работает ресторан.",
+  "Labor Cost": "Доля фонда оплаты труда (зарплаты сотрудников + налоги) в общей выручке ресторана. Норма: 20–30%.",
+  "F & B": "Food and Beverage — еда и напитки. Общий термин для всей ресторанной продукции.",
+  "F&B": "Food and Beverage — еда и напитки. Общий термин для всей ресторанной продукции.",
+  "Fine Dining": "Формат высокой кухни: высокие цены, низкая оборачиваемость, акцент на уникальный гастрономический опыт.",
+  "Casual Dining": "Формат повседневного питания: баланс цены и качества, неформальная атмосфера.",
+  "Fast-Casual": "Формат быстрого питания с качественными ингредиентами: быстро, но не фастфуд.",
+  "Ghost Kitchen": "Кухня только для доставки, без зала для гостей. Низкие расходы на аренду, высокие на логистику.",
+  "Средний чек": "Средняя сумма, которую оставляет один гость. Считается: выручка ÷ количество гостей.",
+  "Валовая прибыль": "Выручка минус себестоимость проданных товаров (COGS). Показывает, сколько осталось после закупки продуктов.",
+  "Чистая прибыль": "Деньги, которые реально заработал ресторан после всех расходов: зарплаты, аренды, налогов, коммуналки.",
+  "Маржинальность": "Доходность блюда или категории. Сколько процентов от цены блюда остаётся прибылью после вычета себестоимости.",
+  "Меню-инжиниринг": "Наука о построении меню: какие блюда продвигать, какие убрать, как расположить, чтобы увеличить прибыль.",
+  "Тайный гость": "Профессиональный оценщик или доверенное лицо, которое анонимно проверяет качество сервиса.",
+  "Buddy system": "Система наставничества: каждому новичку назначается опытный коллега, который помогает освоиться.",
+  "1-to-1": "Формат регулярных личных встреч руководителя с сотрудником для обратной связи и развития.",
+  "Аренда": "Плата за помещение ресторана. Норма: 8–12% от выручки.",
+  "Коммуналка": "Платежи за электричество, воду, отопление, газ. Норма: 3–5% от выручки.",
+  "Маркетинг": "Все действия по привлечению гостей: реклама, соцсети, акции, коллаборации. Норма: 2–5% от выручки.",
+  "СанПиН": "Санитарные правила и нормы — документ, регулирующий требования к помещениям, персоналу и продуктам общепита.",
+  "ТК РФ": "Трудовой кодекс Российской Федерации — закон, регулирующий отношения между работодателем и сотрудником.",
+  "ЕГАИС": "Единая система учёта алкоголя. Каждая бутылка алкоголя должна быть зарегистрирована в этой системе.",
+  "POS": "Point of Sale — кассовая система, через которую оформляются заказы и принимается оплата.",
+  "Z-отчёт": "Итоговый отчёт кассового аппарата за смену. Показывает общую выручку, количество чеков, НДС.",
+  "ФОТ": "Фонд оплаты труда — общая сумма зарплат всех сотрудников ресторана с налогами.",
+  "ТБ": "Техника безопасности — правила поведения на рабочем месте для предотвращения травм и аварий.",
+  "НДС": "Налог на добавленную стоимость. В ресторанном бизнесе обычно 20% (или 10% для некоторых продуктов).",
+  "Отходы": "Потери веса продукта при очистке и обработке. Разница между brutto и netto.",
+  "Списания": "Продукты, которые пришлось выбросить из-за порчи, пересрока или брака. Увеличивают Food Cost.",
+  "Недостача": "Разница между учётным и фактическим остатком продукта в минус. Может быть из-за кражи, ошибок или порчи.",
+  "Излишек": "Разница между учётным и фактическим остатком в плюс. Редко, обычно означает ошибку в учёте.",
+  "Претензия": "Официальное требование к поставщику из-за некачественной поставки, недовеса или нарушения сроков.",
+  "Тендер": "Соревнование поставщиков за право поставлять продукты ресторану. Побеждает лучшее соотношение цена/качество/сервис.",
+  "Демпинг": "Занижение цен ниже рыночных для привлечения гостей. Опасная стратегия, ведущая к убыткам.",
+  "Лояльность": "Привязанность гостя к ресторану. Лояльный гость возвращается, рекомендует друзьям, не уходит к конкуренту.",
+  "Детракторы": "Недовольные гости (оценка 0–6 в NPS). Рассказывают о плохом опыте другим.",
+  "Промоутеры": "Лояльные гости (оценка 9–10 в NPS). Рекомендуют ресторан друзьям и коллегам.",
+  "Пассивные": "Нейтральные гости (оценка 7–8 в NPS). Не жалуются, но легко уйдут к конкуренту.",
+  "Форс-мажор": "Неожиданное событие, которое невозможно предвидеть или предотвратить: пожар, отключение воды, ЧП.",
+  "Референс": "Рекомендация от предыдущего работодателя. Проверка при приёме на работу.",
+  "Кросс-селл": "То же, что Cross-sell — продажа сопутствующих товаров.",
+  "Апселл": "То же, что Upsell — продажа более дорогой версии.",
+  "Кэшбэк": "Возврат части потраченных денег гостю в рамках программы лояльности.",
+  "QR-код": "Двумерный штрих-код. В ресторане используется для меню, оплаты, отслеживания источника гостя.",
+  "Репутация": "Общее мнение о ресторане в интернете и среди гостей. Формируется из отзывов, слухов, публикаций.",
+  "Верификация": "Проверка соответствия системы ХАССП установленным требованиям. Подтверждение, что всё работает правильно.",
+  "Мониторинг": "Регулярное наблюдение и фиксация показателей (температуры, сроков, продаж) для контроля процессов.",
+  "Корректирующие действия": "Шаги, которые предпринимаются, когда что-то пошло не так. Например: бракованная поставка → возврат поставщику + проверка остальных партий.",
+  "Критические пределы": "Граничные значения, за которые процесс выходит из безопасной зоны. Например: температура холодильника выше +5°C.",
+  "ККТ": "Критические контрольные точки — этапы производства, где риск нарушения безопасности пищи наиболее высок."
+};
+
+function wrapTerms(html) {
+  // Split by HTML tags, replace only in text content
+  let result = '';
+  let inTag = false;
+  let textBuffer = '';
+  for (let i = 0; i < html.length; i++) {
+    if (html[i] === '<') {
+      if (textBuffer) {
+        result += replaceTermsInText(textBuffer);
+        textBuffer = '';
+      }
+      inTag = true;
+      result += '<';
+    } else if (html[i] === '>') {
+      inTag = false;
+      result += '>';
+    } else {
+      if (inTag) result += html[i];
+      else textBuffer += html[i];
+    }
+  }
+  if (textBuffer) result += replaceTermsInText(textBuffer);
+  return result;
+}
+
+function replaceTermsInText(text) {
+  const keys = Object.keys(termDict).sort((a, b) => b.length - a.length);
+  let result = text;
+  keys.forEach(term => {
+    const tip = termDict[term].replace(/"/g, '&quot;');
+    const escaped = term.replace(/[.*+?^${}()|[\]\]/g, '\$&');
+    // Match as whole word/phrase, case insensitive, Unicode-aware
+    const regex = new RegExp('(^|[^\p{L}\p{N}])(' + escaped + ')(?![\p{L}\p{N}])', 'giu');
+    result = result.replace(regex, '$1<span class="term" data-tip="' + tip + '">$2</span>');
+  });
+  return result;
+}
+
+// Mobile tooltip toggle
+document.addEventListener('click', (e) => {
+  const term = e.target.closest('.term');
+  if (term) {
+    document.querySelectorAll('.term.active').forEach(t => {
+      if (t !== term) t.classList.remove('active');
+    });
+    term.classList.toggle('active');
+    e.preventDefault();
+  } else {
+    document.querySelectorAll('.term.active').forEach(t => t.classList.remove('active'));
+  }
+});
+
+// ===================== INIT =====================
+loadState();
+renderNav();
+renderModule();
+</script>
+</body>
+</html>
